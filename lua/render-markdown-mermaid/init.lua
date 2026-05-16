@@ -29,9 +29,11 @@ function M.setup(opts)
     vim.api.nvim_set_hl(0, 'RenderMarkdownMermaidError', { link = 'DiagnosticWarn' })
 
     vim.api.nvim_create_autocmd('User', {
-        pattern = 'RenderMarkdownMermaidUpdate',
         group = vim.api.nvim_create_augroup('RenderMarkdownMermaid', { clear = true }),
         callback = function(args)
+            if not (args.data and args.data.render_markdown_mermaid) then
+                return
+            end
             local ok, render_markdown = pcall(require, 'render-markdown')
             if ok and render_markdown and render_markdown.set_buf then
                 local current = vim.api.nvim_get_current_buf()

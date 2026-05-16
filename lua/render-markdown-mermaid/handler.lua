@@ -66,8 +66,8 @@ local function marks_for_block(buf, code_node, content_node, config)
                 cache.set(key, { status = 'error', error = result.error })
             end
             vim.api.nvim_exec_autocmds('User', {
-                pattern = 'RenderMarkdownMermaidUpdate',
                 buffer = buf,
+                data = { render_markdown_mermaid = true },
                 modeline = false,
             })
         end)
