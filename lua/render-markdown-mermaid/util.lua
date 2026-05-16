@@ -7,12 +7,6 @@ function M.node_text(node, buf)
     return vim.treesitter.get_node_text(node, buf) or ''
 end
 
----@param parts string[]
----@return string
-function M.join(parts)
-    return table.concat(parts, '\n')
-end
-
 ---@param value string
 ---@return string
 function M.hash(value)

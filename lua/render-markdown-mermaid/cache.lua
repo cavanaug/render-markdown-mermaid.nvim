@@ -14,13 +14,4 @@ function M.set(key, value)
     M.values[key] = value
 end
 
----@param key string
-function M.clear(key)
-    M.values[key] = nil
-end
-
-function M.reset()
-    M.values = {}
-end
-
 return M

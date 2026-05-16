@@ -19,7 +19,6 @@ M.default = {
         padding_y = 5,
     },
     ui = {
-        icons = true,
         pending = '󱎫 Mermaid rendering...',
         error = '󱂅 Mermaid render failed',
     },

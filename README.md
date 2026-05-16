@@ -60,7 +60,7 @@ flowchart TD
 
 ```lua
 {
-    mode = 'below_raw', -- below_raw | replace_raw | disabled
+    mode = 'below_raw', -- current display mode
     cmd = { 'mermaid-ascii' },
     auto_setup_render_markdown = true,
     debounce = 150,
@@ -79,6 +79,8 @@ flowchart TD
     },
 }
 ```
+
+`mode` is currently implemented as `below_raw`: keep the raw mermaid fence visible and render the diagram immediately after it.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 

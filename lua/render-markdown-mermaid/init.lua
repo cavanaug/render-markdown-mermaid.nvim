@@ -1,6 +1,5 @@
 local config_mod = require('render-markdown-mermaid.config')
 local display = require('render-markdown-mermaid.display')
-local integration = require('render-markdown-mermaid.integration')
 
 local M = {
     config = nil,
@@ -49,14 +48,6 @@ function M.setup(opts)
 
     setup_render_markdown()
     render_buffer({ buf = vim.api.nvim_get_current_buf() })
-end
-
----@return render.md.Handler
-function M.handler()
-    if not M.config then
-        M.setup({})
-    end
-    return integration.handler(M.config)
 end
 
 return M
