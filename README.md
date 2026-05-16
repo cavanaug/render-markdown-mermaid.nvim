@@ -96,3 +96,5 @@ This checks for:
 - `mermaid-ascii`
 - treesitter parsers for `markdown` and `markdown_inline`
 - a modern enough Neovim / treesitter runtime
+
+`render-markdown.nvim` may still show optional warnings for LaTeX support if you do not have the `latex` parser or a converter like `utftex` / `latex2text` installed. Those warnings are only relevant if you want LaTeX rendering in markdown.

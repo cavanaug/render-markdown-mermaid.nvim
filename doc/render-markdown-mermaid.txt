@@ -34,6 +34,10 @@ Use:
 This verifies that `render-markdown.nvim` and `mermaid-ascii` are available.
 It also checks for the `markdown` and `markdown_inline` treesitter parsers.
 
+Note that |render-markdown.nvim| may still warn about optional LaTeX support if
+the `latex` parser or a converter such as `utftex` / `latex2text` is not
+installed. Those warnings only matter if you want LaTeX rendering.
+
 OPTIONS
 
 The plugin exposes `require('render-markdown-mermaid').setup(opts)` and, when
