@@ -22,6 +22,18 @@ function M.diagram(start_row, end_row, lines, mode)
                     end_row = end_row,
                     end_col = 0,
                     conceal = '',
+                    -- Virtual lines render most reliably from a point extmark rather than the
+                    -- same range extmark used for concealment.
+                    virt_lines = nil,
+                    virt_lines_above = false,
+                    priority = 200,
+                },
+            },
+            {
+                conceal = false,
+                start_row = end_row - 1,
+                start_col = 0,
+                opts = {
                     virt_lines = util.to_virt_lines(lines),
                     virt_lines_above = false,
                     priority = 200,
@@ -32,12 +44,10 @@ function M.diagram(start_row, end_row, lines, mode)
 
     return {
         {
-            conceal = true,
+            conceal = false,
             start_row = end_row - 1,
             start_col = 0,
             opts = {
-                end_row = end_row,
-                end_col = 0,
                 virt_lines = util.to_virt_lines(lines),
                 virt_lines_above = false,
                 priority = 200,
@@ -53,12 +63,10 @@ end
 function M.message(row, text, highlight)
     return {
         {
-            conceal = true,
+            conceal = false,
             start_row = row,
             start_col = 0,
             opts = {
-                end_row = row + 1,
-                end_col = 0,
                 virt_lines = { { { text, highlight } } },
                 virt_lines_above = false,
                 priority = 200,
