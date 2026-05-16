@@ -57,19 +57,27 @@ local function key_for(source, config)
     }))
 end
 
-local function render_preview(buf, row, lines)
+local function preview_anchor(buf, end_row)
+    local last_row = math.max(vim.api.nvim_buf_line_count(buf) - 1, 0)
+    if end_row <= last_row then
+        return end_row, true
+    end
+    return last_row, false
+end
+
+local function render_preview(buf, row, lines, above)
     vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
         virt_lines = util.to_virt_lines(lines),
-        virt_lines_above = false,
+        virt_lines_above = above,
         priority = 200,
         strict = false,
     })
 end
 
-local function render_message(buf, row, text, highlight)
+local function render_message(buf, row, text, highlight, above)
     vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
         virt_lines = { { { text, highlight } } },
-        virt_lines_above = false,
+        virt_lines_above = above,
         priority = 200,
         strict = false,
     })
@@ -135,10 +143,12 @@ function M.render(buf, config)
                     conceal_source(buf, start_row, end_row)
                 end
 
+                local preview_row, preview_above = preview_anchor(buf, end_row)
+
                 if entry and entry.status == 'done' then
-                    render_preview(buf, end_row - 1, entry.lines)
+                    render_preview(buf, preview_row, entry.lines, preview_above)
                 elseif entry and entry.status == 'error' then
-                    render_message(buf, end_row - 1, config.ui.error, 'RenderMarkdownMermaidError')
+                    render_message(buf, preview_row, config.ui.error, 'RenderMarkdownMermaidError', preview_above)
                 else
                     if not entry then
                         cache.set(key, { status = 'pending' })
@@ -156,7 +166,7 @@ function M.render(buf, config)
                             end)
                         end)
                     end
-                    render_message(buf, end_row - 1, config.ui.pending, 'RenderMarkdownMermaidPending')
+                    render_message(buf, preview_row, config.ui.pending, 'RenderMarkdownMermaidPending', preview_above)
                 end
             end
         end
