@@ -1,0 +1,187 @@
+local cache = require('render-markdown-mermaid.cache')
+local renderer = require('render-markdown-mermaid.renderer')
+local util = require('render-markdown-mermaid.util')
+
+local M = {
+    ns = vim.api.nvim_create_namespace('render-markdown-mermaid.nvim'),
+    timers = {},
+}
+
+local QUERY = vim.treesitter.query.parse(
+    'markdown',
+    [[
+      (fenced_code_block
+        (info_string
+          (language) @lang)
+        (code_fence_content) @content) @code
+    ]]
+)
+
+local function is_supported(buf)
+    local ft = vim.bo[buf].filetype
+    return ft == 'markdown' or ft == 'mdx' or ft == 'markdown.mdx'
+end
+
+local function current_row(buf)
+    local wins = vim.fn.win_findbuf(buf)
+    if #wins == 0 then
+        return nil
+    end
+    return vim.api.nvim_win_get_cursor(wins[1])[1] - 1
+end
+
+local function node_text(node, buf)
+    local text = util.node_text(node, buf)
+    if text ~= '' then
+        return vim.trim(text)
+    end
+    local start_row, _, end_row = node:range()
+    return vim.trim(table.concat(vim.api.nvim_buf_get_lines(buf, start_row, end_row, false), '\n'))
+end
+
+local function key_for(source, config)
+    return util.hash(vim.json.encode({
+        source = source,
+        mode = config.mode,
+        cli = config.cli,
+    }))
+end
+
+local function render_preview(buf, row, lines)
+    vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
+        virt_lines = util.to_virt_lines(lines),
+        virt_lines_above = false,
+        priority = 200,
+        strict = false,
+    })
+end
+
+local function render_message(buf, row, text, highlight)
+    vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
+        virt_lines = { { { text, highlight } } },
+        virt_lines_above = false,
+        priority = 200,
+        strict = false,
+    })
+end
+
+local function conceal_source(buf, start_row, end_row)
+    vim.api.nvim_buf_set_extmark(buf, M.ns, start_row, 0, {
+        end_row = end_row,
+        end_col = 0,
+        conceal = '',
+        priority = 199,
+        strict = false,
+    })
+end
+
+local function blocks(buf)
+    local ok, parser = pcall(vim.treesitter.get_parser, buf, 'markdown')
+    if not ok or not parser then
+        return {}
+    end
+    local tree = parser:parse()[1]
+    if not tree then
+        return {}
+    end
+
+    local root = tree:root()
+    local result = {}
+    for _, match, _ in QUERY:iter_matches(root, buf, 0, -1) do
+        local lang_node = match[1] and match[1][1] or nil
+        local content_node = match[2] and match[2][1] or nil
+        local code_node = match[3] and match[3][1] or nil
+        if code_node and lang_node and content_node then
+            local language = vim.trim(util.node_text(lang_node, buf))
+            if language == 'mermaid' then
+                result[#result + 1] = {
+                    code = code_node,
+                    content = content_node,
+                }
+            end
+        end
+    end
+    return result
+end
+
+function M.render(buf, config)
+    if not vim.api.nvim_buf_is_valid(buf) or not is_supported(buf) then
+        return
+    end
+
+    vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
+    local row = current_row(buf)
+
+    for _, block in ipairs(blocks(buf)) do
+        local start_row, _, end_row = block.code:range()
+        local line_count = end_row - start_row
+        if line_count <= config.max_block_lines then
+            local source = node_text(block.content, buf)
+            if source ~= '' then
+                local key = key_for(source, config)
+                local entry = config.cache and cache.get(key) or nil
+
+                if config.hide_source and row and not (row >= start_row and row < end_row) then
+                    conceal_source(buf, start_row, end_row)
+                end
+
+                if entry and entry.status == 'done' then
+                    render_preview(buf, end_row - 1, entry.lines)
+                elseif entry and entry.status == 'error' then
+                    render_message(buf, end_row - 1, config.ui.error, 'RenderMarkdownMermaidError')
+                else
+                    if not entry then
+                        cache.set(key, { status = 'pending' })
+                        renderer.render(config, source, function(result)
+                            if not vim.api.nvim_buf_is_valid(buf) then
+                                return
+                            end
+                            if result.ok then
+                                cache.set(key, { status = 'done', lines = result.output })
+                            else
+                                cache.set(key, { status = 'error', error = result.error })
+                            end
+                            vim.schedule(function()
+                                M.render(buf, config)
+                            end)
+                        end)
+                    end
+                    render_message(buf, end_row - 1, config.ui.pending, 'RenderMarkdownMermaidPending')
+                end
+            end
+        end
+    end
+end
+
+function M.schedule(buf, config, delay)
+    local timer = M.timers[buf]
+    if timer then
+        timer:stop()
+        timer:close()
+    end
+
+    local next_timer = vim.uv.new_timer()
+    M.timers[buf] = next_timer
+    next_timer:start(delay, 0, vim.schedule_wrap(function()
+        if M.timers[buf] == next_timer then
+            M.timers[buf] = nil
+        end
+        next_timer:stop()
+        next_timer:close()
+        M.render(buf, config)
+    end))
+end
+
+function M.clear(buf)
+    if vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
+    end
+    local timer = M.timers[buf]
+    if timer then
+        timer:stop()
+        timer:close()
+        M.timers[buf] = nil
+    end
+end
+
+return M

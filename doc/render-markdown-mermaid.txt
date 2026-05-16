@@ -47,6 +47,7 @@ Default values: >
         debounce = 150,
         timeout = 2000,
         cache = true,
+        hide_source = false,
         max_block_lines = 200,
         render_markdown = {
             file_types = { 'markdown', 'mdx', 'markdown.mdx' },
@@ -62,6 +63,9 @@ Default values: >
 
 `render_markdown` is an optional passthrough table forwarded to
 |render-markdown.nvim| when this plugin auto-configures it.
+
+If `hide_source = true`, the raw mermaid fence is concealed whenever the cursor
+is outside the fence, while the rendered diagram stays visible.
 
 MODES
 

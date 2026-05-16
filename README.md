@@ -66,6 +66,7 @@ flowchart TD
     debounce = 150,
     timeout = 2000,
     cache = true,
+    hide_source = false,
     max_block_lines = 200,
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
@@ -78,6 +79,8 @@ flowchart TD
     },
 }
 ```
+
+`hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 
 ## Health check
 
