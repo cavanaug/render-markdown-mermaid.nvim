@@ -1,0 +1,78 @@
+*render-markdown-mermaid.txt*  Inline mermaid rendering for render-markdown.nvim
+
+render-markdown-mermaid.nvim renders fenced |mermaid| code blocks inline with
+|render-markdown.nvim| by calling `mermaid-ascii`.
+The default setup attaches to both Markdown and MDX buffers.
+
+INSTALL
+
+Use your plugin manager to install:
+
+>
+    {
+        'cavanaug/render-markdown-mermaid.nvim',
+        dependencies = {
+            'nvim-treesitter/nvim-treesitter',
+            'MeanderingProgrammer/render-markdown.nvim',
+        },
+        build = ':TSUpdate markdown markdown_inline',
+        opts = {},
+    }
+<
+
+This uses the plugin defaults and automatically configures
+|render-markdown.nvim|.
+
+HEALTH
+
+Use:
+
+>
+    :checkhealth render-markdown-mermaid
+<
+
+This verifies that `render-markdown.nvim` and `mermaid-ascii` are available.
+It also checks for the `markdown` and `markdown_inline` treesitter parsers.
+
+OPTIONS
+
+The plugin exposes `require('render-markdown-mermaid').setup(opts)` and, when
+using lazy.nvim, `opts = {}` maps directly to that setup table.
+
+Default values: >
+    {
+        mode = 'below_raw',
+        cmd = { 'mermaid-ascii' },
+        auto_setup_render_markdown = true,
+        debounce = 150,
+        timeout = 2000,
+        cache = true,
+        max_block_lines = 200,
+        render_markdown = {
+            file_types = { 'markdown', 'mdx', 'markdown.mdx' },
+        },
+        cli = {
+            ascii = false,
+            border_padding = 1,
+            padding_x = 5,
+            padding_y = 5,
+        },
+    }
+<
+
+`render_markdown` is an optional passthrough table forwarded to
+|render-markdown.nvim| when this plugin auto-configures it.
+
+MODES
+
+below_raw
+    Keep the mermaid source visible and render the diagram below it.
+
+replace_raw
+    Conceal the raw block and render the diagram inline. This is more
+    experimental.
+
+disabled
+    Disable inline mermaid rendering.
+
+vim:tw=78:ts=8:noet:ft=help:norl:
