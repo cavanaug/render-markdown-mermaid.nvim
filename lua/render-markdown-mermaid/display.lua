@@ -7,6 +7,16 @@ local M = {
     timers = {},
 }
 
+local function stop_timer(buf)
+    local timer = M.timers[buf]
+    if not timer then
+        return
+    end
+    M.timers[buf] = nil
+    pcall(timer.stop, timer)
+    pcall(timer.close, timer)
+end
+
 local QUERY = vim.treesitter.query.parse(
     'markdown',
     [[
@@ -154,20 +164,15 @@ function M.render(buf, config)
 end
 
 function M.schedule(buf, config, delay)
-    local timer = M.timers[buf]
-    if timer then
-        timer:stop()
-        timer:close()
-    end
+    stop_timer(buf)
 
     local next_timer = vim.uv.new_timer()
     M.timers[buf] = next_timer
     next_timer:start(delay, 0, vim.schedule_wrap(function()
-        if M.timers[buf] == next_timer then
-            M.timers[buf] = nil
+        if M.timers[buf] ~= next_timer then
+            return
         end
-        next_timer:stop()
-        next_timer:close()
+        stop_timer(buf)
         M.render(buf, config)
     end))
 end
@@ -176,12 +181,7 @@ function M.clear(buf)
     if vim.api.nvim_buf_is_valid(buf) then
         vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
     end
-    local timer = M.timers[buf]
-    if timer then
-        timer:stop()
-        timer:close()
-        M.timers[buf] = nil
-    end
+    stop_timer(buf)
 end
 
 return M
