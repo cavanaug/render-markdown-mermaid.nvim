@@ -1,8 +1,27 @@
 local M = {}
 
+local function has_executable(command)
+    return vim.fn.executable(command) == 1
+end
+
+---@param cmd? string[]
+---@return string[]
+function M.resolve_cmd(cmd)
+    if cmd and cmd[1] then
+        return vim.deepcopy(cmd)
+    end
+    if has_executable('bm') then
+        return { 'bm' }
+    end
+    if has_executable('mermaid-ascii') then
+        return { 'mermaid-ascii' }
+    end
+    return { 'bm' }
+end
+
 M.default = {
     mode = 'below_raw',
-    cmd = { 'mermaid-ascii' },
+    cmd = { 'bm' },
     auto_setup_render_markdown = true,
     debounce = 150,
     timeout = 2000,
@@ -27,7 +46,11 @@ M.default = {
 ---@param opts? table
 ---@return table
 function M.merge(opts)
-    return vim.tbl_deep_extend('force', {}, M.default, opts or {})
+    local merged = vim.tbl_deep_extend('force', {}, M.default, opts or {})
+    if not merged.cmd or not merged.cmd[1] or not opts or opts.cmd == nil then
+        merged.cmd = M.resolve_cmd(opts and opts.cmd or nil)
+    end
+    return merged
 end
 
 return M

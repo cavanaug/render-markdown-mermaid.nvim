@@ -1,7 +1,8 @@
 *render-markdown-mermaid.txt*  Inline mermaid rendering for render-markdown.nvim
 
 render-markdown-mermaid.nvim renders fenced |mermaid| code blocks inline with
-|render-markdown.nvim| by calling `mermaid-ascii`.
+|render-markdown.nvim| by calling Beautiful Mermaid (`bm`) or
+`mermaid-ascii`.
 The default setup attaches to both Markdown and MDX buffers.
 
 INSTALL
@@ -31,7 +32,8 @@ Use:
     :checkhealth render-markdown-mermaid
 <
 
-This verifies that `render-markdown.nvim` and `mermaid-ascii` are available.
+This verifies that `render-markdown.nvim` and either `bm` or
+`mermaid-ascii` are available.
 It also checks for the `markdown` and `markdown_inline` treesitter parsers.
 
 Note that |render-markdown.nvim| may still warn about optional LaTeX support if
@@ -46,7 +48,7 @@ using lazy.nvim, `opts = {}` maps directly to that setup table.
 Default values: >
     {
         mode = 'below_raw',
-        cmd = { 'mermaid-ascii' },
+        cmd = { 'bm' },
         auto_setup_render_markdown = true,
         debounce = 150,
         timeout = 2000,
@@ -64,6 +66,12 @@ Default values: >
         },
     }
 <
+
+The default renderer selection prefers `bm` and falls back to
+`mermaid-ascii`. Set `cmd = { ... }` to override that choice explicitly.
+
+`cli.ascii = false` is the default and keeps Unicode output enabled for both
+renderers. Set `cli.ascii = true` if you want plain ASCII fallback characters.
 
 `render_markdown` is an optional passthrough table forwarded to
 |render-markdown.nvim| when this plugin auto-configures it.

@@ -1,6 +1,6 @@
 # render-markdown-mermaid.nvim
 
-Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with `mermaid-ascii`.
+Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with Beautiful Mermaid (`bm`) or `mermaid-ascii`.
 The default setup attaches to both Markdown and MDX buffers.
 
 ## Requirements
@@ -8,7 +8,7 @@ The default setup attaches to both Markdown and MDX buffers.
 - Neovim `0.10+`
 - [`nvim-treesitter`](https://github.com/nvim-treesitter/nvim-treesitter) with `markdown` and `markdown_inline` parsers
 - [`render-markdown.nvim`](https://github.com/MeanderingProgrammer/render-markdown.nvim)
-- `mermaid-ascii` in your `PATH`
+- Beautiful Mermaid (`bm`) in your `PATH` (preferred), or `mermaid-ascii`
 
 ## Install with lazy.nvim
 
@@ -61,7 +61,7 @@ flowchart TD
 ```lua
 {
     mode = 'below_raw', -- current display mode
-    cmd = { 'mermaid-ascii' },
+    cmd = { 'bm' }, -- resolved command when bm is selected; omit cmd to use automatic selection
     auto_setup_render_markdown = true,
     debounce = 150,
     timeout = 2000,
@@ -72,7 +72,7 @@ flowchart TD
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
     cli = {
-        ascii = false,
+        ascii = false, -- false = Unicode box-drawing, true = plain ASCII
         border_padding = 1,
         padding_x = 5,
         padding_y = 5,
@@ -81,6 +81,10 @@ flowchart TD
 ```
 
 `mode` is currently implemented as `below_raw`: keep the raw mermaid fence visible and render the diagram immediately after it.
+
+If you do not set `cmd`, the plugin prefers `bm` and falls back to `mermaid-ascii` when `bm` is unavailable.
+
+`cli.ascii = false` is the default and keeps Unicode output enabled for both renderers. Set `cli.ascii = true` if you want plain ASCII fallback characters instead.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 
@@ -95,7 +99,7 @@ Run:
 This checks for:
 
 - `render-markdown.nvim`
-- `mermaid-ascii`
+- `bm` or `mermaid-ascii`
 - treesitter parsers for `markdown` and `markdown_inline`
 - a modern enough Neovim / treesitter runtime
 

@@ -1,4 +1,5 @@
 local M = {}
+local config_mod = require('render-markdown-mermaid.config')
 
 local function has_executable(command)
     return vim.fn.executable(command) == 1
@@ -11,10 +12,7 @@ end
 function M.check()
     local ok, render_markdown = pcall(require, 'render-markdown')
     local config_ok, mermaid = pcall(require, 'render-markdown-mermaid')
-    local command = 'mermaid-ascii'
-    if config_ok and mermaid and mermaid.config and mermaid.config.cmd and mermaid.config.cmd[1] then
-        command = mermaid.config.cmd[1]
-    end
+    local command = config_mod.resolve_cmd(config_ok and mermaid and mermaid.config and mermaid.config.cmd or nil)[1]
 
     vim.health.start('render-markdown-mermaid.nvim [dependencies]')
 
@@ -31,8 +29,8 @@ function M.check()
         vim.health.ok(('renderer executable is available: %s'):format(command))
     else
         vim.health.error(('renderer executable is not available in PATH: %s'):format(command), {
-            'Install mermaid-ascii or configure setup({ cmd = { ... } }).',
-            'The default command is: mermaid-ascii',
+            'Install Beautiful Mermaid (bm, preferred) or mermaid-ascii, or configure setup({ cmd = { ... } }).',
+            'The default renderer selection prefers bm and falls back to mermaid-ascii.',
         })
     end
 
