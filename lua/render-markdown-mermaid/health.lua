@@ -9,10 +9,33 @@ local function has_parser(language)
     return pcall(vim.treesitter.language.add, language)
 end
 
+---@param command string
+---@param available boolean
+local function report_renderer(command, available)
+    if available then
+        vim.health.ok(('%s is available in PATH'):format(command))
+    else
+        vim.health.info(('%s is not available in PATH'):format(command))
+    end
+end
+
+---@param command? string[]
+---@return string
+local function command_string(command)
+    if not command or #command == 0 then
+        return ''
+    end
+    return table.concat(command, ' ')
+end
+
 function M.check()
     local ok, render_markdown = pcall(require, 'render-markdown')
     local config_ok, mermaid = pcall(require, 'render-markdown-mermaid')
-    local command = config_mod.resolve_cmd(config_ok and mermaid and mermaid.config and mermaid.config.cmd or nil)[1]
+    local config = config_ok and mermaid and mermaid.config or nil
+    local available = config_mod.available_default_renderers()
+    local default_command = config_mod.resolve_cmd(nil, available)[1]
+    local configured_command = config and config.cmd or nil
+    local cmd_source = config and config._cmd_source or 'auto'
 
     vim.health.start('render-markdown-mermaid.nvim [dependencies]')
 
@@ -25,13 +48,20 @@ function M.check()
         })
     end
 
-    if has_executable(command) then
-        vim.health.ok(('renderer executable is available: %s'):format(command))
+    report_renderer('bm', available['bm'])
+    report_renderer('mermaid-ascii', available['mermaid-ascii'])
+
+    if available[default_command] then
+        vim.health.ok(('Default renderer priority selects: %s'):format(default_command))
     else
-        vim.health.error(('renderer executable is not available in PATH: %s'):format(command), {
+        vim.health.error('No supported renderer executable is available in PATH', {
             'Install Beautiful Mermaid (bm, preferred) or mermaid-ascii, or configure setup({ cmd = { ... } }).',
             'The default renderer selection prefers bm and falls back to mermaid-ascii.',
         })
+    end
+
+    if cmd_source == 'user' then
+        vim.health.info(('Configured renderer override: %s'):format(command_string(configured_command)))
     end
 
     vim.health.start('render-markdown-mermaid.nvim [runtime]')

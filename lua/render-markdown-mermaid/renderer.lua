@@ -12,6 +12,7 @@ end
 ---@param command string[]
 ---@return string, integer?
 local function renderer_kind(command)
+    command = command or {}
     for index, part in ipairs(command) do
         local name = basename(part)
         if name == 'bm' or name == 'mermaid-ascii' then
@@ -19,6 +20,23 @@ local function renderer_kind(command)
         end
     end
     return basename(command[1]), nil
+end
+
+---@param command string[]
+---@param stdout string
+---@return string[]
+local function output_lines(command, stdout)
+    local output = stdout:gsub('\r\n', '\n'):gsub('\n+$', '')
+    if output == '' then
+        return {}
+    end
+
+    local lines = vim.split(output, '\n', { plain = true })
+    if renderer_kind(command) == 'bm' and lines[1] and lines[1] ~= '' and not lines[1]:match('^%s') then
+        -- Beautiful Mermaid's top border aligns correctly in Neovim with one leading space.
+        lines[1] = ' ' .. lines[1]
+    end
+    return lines
 end
 
 ---@param config table
@@ -78,6 +96,7 @@ end
 ---@param callback fun(result: table)
 function M.render(config, source, callback)
     local command = M.command(config)
+    local kind = renderer_kind(command)
     vim.system(command, {
         stdin = source,
         text = true,
@@ -85,13 +104,16 @@ function M.render(config, source, callback)
     }, function(result)
         vim.schedule(function()
             if result.code == 0 and result.stdout and result.stdout ~= '' then
-                callback({ ok = true, output = vim.split(vim.trim(result.stdout), '\n', { plain = true }) })
-                return
+                local lines = output_lines(command, result.stdout)
+                if #lines > 0 then
+                    callback({ ok = true, output = lines })
+                    return
+                end
             end
 
             callback({
                 ok = false,
-                error = vim.trim(result.stderr or ('%s returned no output'):format((select(1, renderer_kind(command))) ~= '' and (select(1, renderer_kind(command))) or 'renderer')),
+                error = vim.trim(result.stderr or ('%s returned no output'):format(kind ~= '' and kind or 'renderer')),
             })
         end)
     end)

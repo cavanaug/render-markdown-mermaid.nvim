@@ -58,11 +58,7 @@ local function key_for(source, config)
 end
 
 local function preview_anchor(buf, end_row)
-    local last_row = math.max(vim.api.nvim_buf_line_count(buf) - 1, 0)
-    if end_row <= last_row then
-        return end_row, true
-    end
-    return last_row, false
+    return end_row, true
 end
 
 local function render_preview(buf, row, lines, above)

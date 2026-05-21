@@ -99,7 +99,9 @@ Run:
 This checks for:
 
 - `render-markdown.nvim`
-- `bm` or `mermaid-ascii`
+- `bm`
+- `mermaid-ascii`
+- which renderer will be selected by default
 - treesitter parsers for `markdown` and `markdown_inline`
 - a modern enough Neovim / treesitter runtime
 

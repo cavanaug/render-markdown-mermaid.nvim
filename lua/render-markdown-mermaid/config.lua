@@ -1,22 +1,33 @@
 local M = {}
+local DEFAULT_RENDERERS = { 'bm', 'mermaid-ascii' }
 
 local function has_executable(command)
     return vim.fn.executable(command) == 1
 end
 
+---@return table<string, boolean>
+function M.available_default_renderers()
+    local available = {}
+    for _, command in ipairs(DEFAULT_RENDERERS) do
+        available[command] = has_executable(command)
+    end
+    return available
+end
+
 ---@param cmd? string[]
+---@param available? table<string, boolean>
 ---@return string[]
-function M.resolve_cmd(cmd)
+function M.resolve_cmd(cmd, available)
     if cmd and cmd[1] then
         return vim.deepcopy(cmd)
     end
-    if has_executable('bm') then
-        return { 'bm' }
+    available = available or M.available_default_renderers()
+    for _, command in ipairs(DEFAULT_RENDERERS) do
+        if available[command] then
+            return { command }
+        end
     end
-    if has_executable('mermaid-ascii') then
-        return { 'mermaid-ascii' }
-    end
-    return { 'bm' }
+    return { DEFAULT_RENDERERS[1] }
 end
 
 M.default = {
@@ -47,8 +58,10 @@ M.default = {
 ---@return table
 function M.merge(opts)
     local merged = vim.tbl_deep_extend('force', {}, M.default, opts or {})
-    if not merged.cmd or not merged.cmd[1] or not opts or opts.cmd == nil then
-        merged.cmd = M.resolve_cmd(opts and opts.cmd or nil)
+    local has_user_cmd = opts and opts.cmd and opts.cmd[1]
+    merged._cmd_source = has_user_cmd and 'user' or 'auto'
+    if merged._cmd_source == 'auto' or not merged.cmd or not merged.cmd[1] then
+        merged.cmd = M.resolve_cmd(nil)
     end
     return merged
 end

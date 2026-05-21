@@ -32,8 +32,8 @@ Use:
     :checkhealth render-markdown-mermaid
 <
 
-This verifies that `render-markdown.nvim` and either `bm` or
-`mermaid-ascii` are available.
+This verifies that `render-markdown.nvim`, `bm`, and `mermaid-ascii` are
+available, then reports which renderer will be selected by default.
 It also checks for the `markdown` and `markdown_inline` treesitter parsers.
 
 Note that |render-markdown.nvim| may still warn about optional LaTeX support if
