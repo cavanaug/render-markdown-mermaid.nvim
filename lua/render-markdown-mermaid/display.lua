@@ -40,6 +40,15 @@ local function current_row(buf)
     return vim.api.nvim_win_get_cursor(wins[1])[1] - 1
 end
 
+local function in_insert_mode()
+    local mode = vim.api.nvim_get_mode().mode or ''
+    return mode:match('^[iR]') ~= nil
+end
+
+local function cursor_inside_block(row, start_row, end_row)
+    return row and row >= start_row and row < end_row
+end
+
 local function node_text(node, buf)
     local text = util.node_text(node, buf)
     if text ~= '' then
@@ -58,7 +67,13 @@ local function key_for(source, config)
     }))
 end
 
-local function preview_anchor(config, start_row, end_row)
+local function preview_anchor(config, start_row, end_row, replacing)
+    if replacing then
+        if start_row > 0 then
+            return start_row - 1, false
+        end
+        return end_row, true
+    end
     if config.placement == 'below' then
         return end_row, true
     end
@@ -88,6 +103,16 @@ local function conceal_source(buf, start_row, end_row)
         end_row = end_row,
         end_col = 0,
         conceal = '',
+        priority = 199,
+        strict = false,
+    })
+end
+
+local function conceal_lines(buf, start_row, end_row)
+    vim.api.nvim_buf_set_extmark(buf, M.ns, start_row, 0, {
+        end_row = end_row,
+        end_col = 0,
+        conceal_lines = '',
         priority = 199,
         strict = false,
     })
@@ -129,6 +154,7 @@ function M.render(buf, config)
 
     vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
     local row = current_row(buf)
+    local editing = in_insert_mode()
 
     for _, block in ipairs(blocks(buf)) do
         local start_row, _, end_row = block.code:range()
@@ -138,12 +164,16 @@ function M.render(buf, config)
             if source ~= '' then
                 local key = key_for(source, config)
                 local entry = config.cache and cache.get(key) or nil
+                local cursor_inside = cursor_inside_block(row, start_row, end_row)
+                local replacing = config.replace and not editing and not cursor_inside
 
-                if config.hide_source and row and not (row >= start_row and row < end_row) then
+                if replacing then
+                    conceal_lines(buf, start_row, end_row)
+                elseif config.hide_source and not cursor_inside then
                     conceal_source(buf, start_row, end_row)
                 end
 
-                local preview_row, preview_above = preview_anchor(config, start_row, end_row)
+                local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing)
 
                 if entry and entry.status == 'done' then
                     render_preview(buf, preview_row, entry.lines, preview_above)

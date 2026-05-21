@@ -31,12 +31,7 @@ local function output_lines(command, stdout)
         return {}
     end
 
-    local lines = vim.split(output, '\n', { plain = true })
-    if renderer_kind(command) == 'bm' and lines[1] and lines[1] ~= '' and not lines[1]:match('^%s') then
-        -- Beautiful Mermaid's top border aligns correctly in Neovim with one leading space.
-        lines[1] = ' ' .. lines[1]
-    end
-    return lines
+    return vim.split(output, '\n', { plain = true })
 end
 
 ---@param config table

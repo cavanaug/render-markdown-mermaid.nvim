@@ -62,7 +62,8 @@ flowchart TD
 ```lua
 {
     mode = 'unicode', -- default: Unicode box-drawing; use 'ascii' for ASCII fallback
-    placement = 'above', -- render above or below the raw mermaid fence
+    placement = 'above', -- render above or below the raw mermaid fence while editing
+    replace = false, -- visually replace the fence in normal mode when not editing that block
     cmd = { 'bm' }, -- resolved command when bm is selected; omit cmd to use automatic selection
     auto_setup_render_markdown = true,
     debounce = 150,
@@ -81,7 +82,9 @@ flowchart TD
 }
 ```
 
-`placement` controls whether the rendered diagram is shown `above` or `below` the raw mermaid fence. The default is `above`.
+`placement` controls whether the rendered diagram is shown `above` or `below` the raw mermaid fence while editing. The default is `above`.
+
+`replace = true` visually replaces the raw mermaid fence in normal mode whenever your cursor is outside that block. Entering that block or entering insert mode reveals the source again and falls back to `placement`.
 
 `mode` controls whether text renderers use Unicode box-drawing characters (`unicode`) or plain ASCII fallback characters (`ascii`). The default is `unicode`.
 

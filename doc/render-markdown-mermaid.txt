@@ -49,6 +49,7 @@ Default values: >
     {
         mode = 'unicode',
         placement = 'above',
+        replace = false,
         cmd = { 'bm' },
         auto_setup_render_markdown = true,
         debounce = 150,
@@ -74,7 +75,11 @@ The default renderer selection prefers `bm` and falls back to
 |render-markdown.nvim| when this plugin auto-configures it.
 
 `placement` controls whether the rendered diagram is shown `above` or `below`
-the raw mermaid fence. The default is `above`.
+the raw mermaid fence while editing. The default is `above`.
+
+If `replace = true`, the raw mermaid fence is visually replaced in normal mode
+whenever the cursor is outside that block. Entering that block or entering
+insert mode reveals the source again and falls back to `placement`.
 
 `mode` controls whether text renderers use Unicode box-drawing characters
 (`unicode`) or plain ASCII fallback characters (`ascii`). The default is

@@ -41,6 +41,7 @@ end
 M.default = {
     mode = 'unicode',
     placement = 'above',
+    replace = false,
     cmd = { 'bm' },
     auto_setup_render_markdown = true,
     debounce = 150,
