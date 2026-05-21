@@ -52,13 +52,17 @@ end
 local function key_for(source, config)
     return util.hash(vim.json.encode({
         source = source,
+        cmd = config.cmd,
         mode = config.mode,
         cli = config.cli,
     }))
 end
 
-local function preview_anchor(buf, end_row)
-    return end_row, true
+local function preview_anchor(config, start_row, end_row)
+    if config.placement == 'below' then
+        return end_row, true
+    end
+    return start_row, true
 end
 
 local function render_preview(buf, row, lines, above)
@@ -139,7 +143,7 @@ function M.render(buf, config)
                     conceal_source(buf, start_row, end_row)
                 end
 
-                local preview_row, preview_above = preview_anchor(buf, end_row)
+                local preview_row, preview_above = preview_anchor(config, start_row, end_row)
 
                 if entry and entry.status == 'done' then
                     render_preview(buf, preview_row, entry.lines, preview_above)

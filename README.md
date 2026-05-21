@@ -37,7 +37,8 @@ If you want custom options, put them in that same `opts` table:
     },
     build = ':TSUpdate markdown markdown_inline',
     opts = {
-        mode = 'below_raw',
+        placement = 'below',
+        mode = 'ascii',
         render_markdown = {
             code = { border = 'thin' },
         },
@@ -60,7 +61,8 @@ flowchart TD
 
 ```lua
 {
-    mode = 'below_raw', -- current display mode
+    mode = 'unicode', -- default: Unicode box-drawing; use 'ascii' for ASCII fallback
+    placement = 'above', -- render above or below the raw mermaid fence
     cmd = { 'bm' }, -- resolved command when bm is selected; omit cmd to use automatic selection
     auto_setup_render_markdown = true,
     debounce = 150,
@@ -72,7 +74,6 @@ flowchart TD
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
     cli = {
-        ascii = false, -- false = Unicode box-drawing, true = plain ASCII
         border_padding = 1,
         padding_x = 5,
         padding_y = 5,
@@ -80,11 +81,11 @@ flowchart TD
 }
 ```
 
-`mode` is currently implemented as `below_raw`: keep the raw mermaid fence visible and render the diagram immediately after it.
+`placement` controls whether the rendered diagram is shown `above` or `below` the raw mermaid fence. The default is `above`.
+
+`mode` controls whether text renderers use Unicode box-drawing characters (`unicode`) or plain ASCII fallback characters (`ascii`). The default is `unicode`.
 
 If you do not set `cmd`, the plugin prefers `bm` and falls back to `mermaid-ascii` when `bm` is unavailable.
-
-`cli.ascii = false` is the default and keeps Unicode output enabled for both renderers. Set `cli.ascii = true` if you want plain ASCII fallback characters instead.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 

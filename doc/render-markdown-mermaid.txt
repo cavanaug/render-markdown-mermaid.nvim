@@ -47,7 +47,8 @@ using lazy.nvim, `opts = {}` maps directly to that setup table.
 
 Default values: >
     {
-        mode = 'below_raw',
+        mode = 'unicode',
+        placement = 'above',
         cmd = { 'bm' },
         auto_setup_render_markdown = true,
         debounce = 150,
@@ -59,7 +60,6 @@ Default values: >
             file_types = { 'markdown', 'mdx', 'markdown.mdx' },
         },
         cli = {
-            ascii = false,
             border_padding = 1,
             padding_x = 5,
             padding_y = 5,
@@ -70,14 +70,15 @@ Default values: >
 The default renderer selection prefers `bm` and falls back to
 `mermaid-ascii`. Set `cmd = { ... }` to override that choice explicitly.
 
-`cli.ascii = false` is the default and keeps Unicode output enabled for both
-renderers. Set `cli.ascii = true` if you want plain ASCII fallback characters.
-
 `render_markdown` is an optional passthrough table forwarded to
 |render-markdown.nvim| when this plugin auto-configures it.
 
-`mode` is currently implemented as `below_raw`: the raw mermaid fence stays
-visible and the rendered diagram is shown immediately after it.
+`placement` controls whether the rendered diagram is shown `above` or `below`
+the raw mermaid fence. The default is `above`.
+
+`mode` controls whether text renderers use Unicode box-drawing characters
+(`unicode`) or plain ASCII fallback characters (`ascii`). The default is
+`unicode`.
 
 If `hide_source = true`, the raw mermaid fence is concealed whenever the cursor
 is outside the fence, while the rendered diagram stays visible.

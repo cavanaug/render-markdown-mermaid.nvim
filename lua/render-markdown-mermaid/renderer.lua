@@ -40,6 +40,12 @@ local function output_lines(command, stdout)
 end
 
 ---@param config table
+---@return boolean
+local function is_ascii_mode(config)
+    return config.mode == 'ascii'
+end
+
+---@param config table
 ---@return string[]
 local function mermaid_ascii_command(config)
     local command = vim.deepcopy(config.cmd)
@@ -53,7 +59,7 @@ local function mermaid_ascii_command(config)
         '-y',
         tostring(config.cli.padding_y),
     })
-    if config.cli.ascii then
+    if is_ascii_mode(config) then
         command[#command + 1] = '-a'
     end
     return command
@@ -76,7 +82,7 @@ local function bm_command(config)
         '--padding-y',
         tostring(config.cli.padding_y),
     })
-    if config.cli.ascii then
+    if is_ascii_mode(config) then
         command[#command + 1] = '--ascii'
     end
     return command
