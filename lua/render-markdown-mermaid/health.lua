@@ -49,14 +49,15 @@ function M.check()
     end
 
     report_renderer('bm', available['bm'])
+    report_renderer('termaid', available['termaid'])
     report_renderer('mermaid-ascii', available['mermaid-ascii'])
 
     if available[default_command] then
         vim.health.ok(('Default renderer priority selects: %s'):format(default_command))
     else
         vim.health.error('No supported renderer executable is available in PATH', {
-            'Install Beautiful Mermaid (bm, preferred) or mermaid-ascii, or configure setup({ cmd = { ... } }).',
-            'The default renderer selection prefers bm and falls back to mermaid-ascii.',
+            'Install Beautiful Mermaid (bm, preferred), termaid, or mermaid-ascii, or configure setup({ cmd = { ... } }).',
+            'The default renderer selection prefers bm, then termaid, and falls back to mermaid-ascii.',
         })
     end
 

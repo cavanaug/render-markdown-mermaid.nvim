@@ -1,6 +1,6 @@
 # render-markdown-mermaid.nvim
 
-Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with Beautiful Mermaid (`bm`) or `mermaid-ascii`.
+Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with Beautiful Mermaid (`bm`), `termaid`, or `mermaid-ascii`.
 The default setup attaches to both Markdown and MDX buffers.
 
 ## Requirements
@@ -8,14 +8,14 @@ The default setup attaches to both Markdown and MDX buffers.
 - Neovim `0.10+`
 - [`nvim-treesitter`](https://github.com/nvim-treesitter/nvim-treesitter) with `markdown` and `markdown_inline` parsers
 - [`render-markdown.nvim`](https://github.com/MeanderingProgrammer/render-markdown.nvim)
-- Beautiful Mermaid (`bm`) in your `PATH` (preferred), or `mermaid-ascii`
+- Beautiful Mermaid (`bm`) in your `PATH` (preferred), `termaid`, or `mermaid-ascii`
 
 ## Install a renderer
 
 This plugin shells out to an external Mermaid CLI. Install one of these and make sure the executable is on your `PATH`.
 
-`bm` is the recommended backend. It has much better Mermaid compatibility and renders substantially more diagram types and syntax than
-`mermaid-ascii`. `mermaid-ascii` is still useful as a lightweight fallback when you only need its supported subset.
+`bm` is the recommended backend. `termaid` is a Python renderer with broad diagram support and a pipe-friendly CLI, while
+`mermaid-ascii` is useful as a lightweight fallback when you only need its supported subset.
 
 ### Preferred: `bm`
 
@@ -31,6 +31,14 @@ bun add -g beautiful-mermaid-cli
 
 # Homebrew
 brew install okooo5km/tap/bm
+```
+
+### Alternative: `termaid`
+
+`termaid` is available on PyPI and reads Mermaid source from stdin or a file. Install it with:
+
+```bash
+pip install termaid
 ```
 
 ### Fallback: `mermaid-ascii`
@@ -113,7 +121,7 @@ flowchart TD
     mode = 'unicode', -- default: Unicode box-drawing; use 'ascii' for ASCII fallback
     placement = 'above', -- render above or below the raw mermaid fence while editing
     replace = false, -- visually replace the fence in normal mode when not editing that block
-    cmd = { 'bm' }, -- resolved command when bm is selected; omit cmd to use automatic selection
+    cmd = { 'bm' }, -- resolved command; omit cmd to prefer bm, then termaid, then mermaid-ascii
     auto_setup_render_markdown = true,
     debounce = 150,
     timeout = 2000,
@@ -139,7 +147,7 @@ entering insert mode reveals the source again and falls back to `placement`.
 `mode` controls whether text renderers use Unicode box-drawing characters (`unicode`) or plain ASCII fallback characters (`ascii`). The
 default is `unicode`.
 
-If you do not set `cmd`, the plugin prefers `bm` and falls back to `mermaid-ascii` when `bm` is unavailable.
+If you do not set `cmd`, the plugin prefers `bm`, then `termaid`, and falls back to `mermaid-ascii`.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 
@@ -155,6 +163,7 @@ This checks for:
 
 - `render-markdown.nvim`
 - `bm`
+- `termaid`
 - `mermaid-ascii`
 - which renderer will be selected by default
 - treesitter parsers for `markdown` and `markdown_inline`

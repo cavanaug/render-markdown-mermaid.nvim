@@ -1,5 +1,5 @@
 local M = {}
-local DEFAULT_RENDERERS = { 'bm', 'mermaid-ascii' }
+local DEFAULT_RENDERERS = { 'bm', 'termaid', 'mermaid-ascii' }
 local VALID_MODES = {
     unicode = true,
     ascii = true,

@@ -15,7 +15,7 @@ local function renderer_kind(command)
     command = command or {}
     for index, part in ipairs(command) do
         local name = basename(part)
-        if name == 'bm' or name == 'mermaid-ascii' then
+        if name == 'bm' or name == 'termaid' or name == 'mermaid-ascii' then
             return name, index
         end
     end
@@ -85,9 +85,28 @@ end
 
 ---@param config table
 ---@return string[]
+local function termaid_command(config)
+    local command = vim.deepcopy(config.cmd)
+    vim.list_extend(command, {
+        '--padding-x',
+        tostring(config.cli.padding_x),
+        '--padding-y',
+        tostring(config.cli.padding_y),
+    })
+    if is_ascii_mode(config) then
+        command[#command + 1] = '--ascii'
+    end
+    return command
+end
+
+---@param config table
+---@return string[]
 function M.command(config)
     if renderer_kind(config.cmd) == 'bm' then
         return bm_command(config)
+    end
+    if renderer_kind(config.cmd) == 'termaid' then
+        return termaid_command(config)
     end
     return mermaid_ascii_command(config)
 end

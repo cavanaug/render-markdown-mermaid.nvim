@@ -2,14 +2,14 @@
 
 ## What this repo is
 
-A Neovim plugin (`render-markdown-mermaid.nvim`) that renders fenced `mermaid` code blocks inline using `render-markdown.nvim` and either `bm` (Beautiful Mermaid) or `mermaid-ascii` as the CLI backend.
+A Neovim plugin (`render-markdown-mermaid.nvim`) that renders fenced `mermaid` code blocks inline using `render-markdown.nvim` and `bm` (Beautiful Mermaid), `termaid`, or `mermaid-ascii` as the CLI backend.
 
 ## Key architecture
 
 - **Entrypoint**: `lua/render-markdown-mermaid/init.lua` — `M.setup(opts)` is the only public API. Users call it via lazy.nvim `opts = {}`. The plugin guard in `plugin/render-markdown-mermaid.lua` does NOT call setup.
-- **Rendering pipeline**: `display.lua` (treesitter query → cache check → async `vim.system()` call) → `renderer.lua` (builds CLI args for `bm` or `mermaid-ascii`) → result placed as extmark virtual lines.
+- **Rendering pipeline**: `display.lua` (treesitter query → cache check → async `vim.system()` call) → `renderer.lua` (builds CLI args for `bm`, `termaid`, or `mermaid-ascii`) → result placed as extmark virtual lines.
 - **Cache**: `cache.lua` keys on `sha256(json({source, cmd, mode, cli}))`.
-- **Config resolution**: `config.lua` — `cmd` auto-resolves to first available of `['bm', 'mermaid-ascii']`; `mode` defaults to `'unicode'`; `placement` defaults to `'above'`.
+- **Config resolution**: `config.lua` — `cmd` auto-resolves to first available of `['bm', 'termaid', 'mermaid-ascii']`; `mode` defaults to `'unicode'`; `placement` defaults to `'above'`.
 
 ## No tooling currently present
 
@@ -22,7 +22,7 @@ Open `samples/one-pager.md` or `samples/sequence_diagrams.md` in Neovim. Run `:c
 ## Requirements to verify behavior
 
 - Neovim 0.10+
-- `bm` (`beautiful-mermaid`) or `mermaid-ascii` in `PATH`
+- `bm` (`beautiful-mermaid`), `termaid`, or `mermaid-ascii` in `PATH`
 - `nvim-treesitter` with `markdown` and `markdown_inline` parsers installed (`:TSInstall markdown markdown_inline`)
 - `render-markdown.nvim` installed
 
