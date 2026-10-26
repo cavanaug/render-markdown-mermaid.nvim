@@ -66,8 +66,9 @@ function M.check()
         })
     end
 
-    if cmd_source == 'user' then
-        vim.health.info(('Configured renderer override: %s'):format(command_string(configured_command)))
+    if cmd_source == 'user' or cmd_source == 'cycle' then
+        local label = cmd_source == 'cycle' and 'Session renderer selection' or 'Configured renderer override'
+        vim.health.info(('%s: %s'):format(label, command_string(configured_command)))
         if config and config.width ~= nil then
             local width = config.width == 'auto' and 'auto (window width)' or tostring(config.width)
             vim.health.info(('Width fitting: %s'):format(width))

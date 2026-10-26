@@ -2,11 +2,13 @@ local cache = require('render-markdown-mermaid.cache')
 local renderer = require('render-markdown-mermaid.renderer')
 local util = require('render-markdown-mermaid.util')
 local scroll = require('render-markdown-mermaid.scroll')
+local config_mod = require('render-markdown-mermaid.config')
 
 local M = {
     ns = vim.api.nvim_create_namespace('render-markdown-mermaid.nvim'),
     timers = {},
 }
+local configs = {}
 
 local function stop_timer(buf)
     local timer = M.timers[buf]
@@ -231,6 +233,8 @@ function M.render(buf, config)
         return
     end
 
+    configs[buf] = config
+
     vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
     scroll.begin(buf)
     local row = current_row(buf)
@@ -274,6 +278,7 @@ function M.render(buf, config)
                         focus_key = config.focus_key,
                         notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
                         padding = padding,
+                        renderer = config_mod.renderer_name(config.cmd),
                     }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
                         if vim.api.nvim_buf_is_valid(buf) then
                             -- A full render may already have removed this mark
@@ -299,7 +304,10 @@ function M.render(buf, config)
                                 cache.set(key, { status = 'error', error = result.error })
                             end
                             vim.schedule(function()
-                                M.render(buf, config)
+                                -- A renderer cycle may have superseded this
+                                -- request. Cache its result, but never let an
+                                -- old backend repaint the current preview.
+                                if configs[buf] == config then M.render(buf, config) end
                             end)
                         end)
                     end
@@ -312,6 +320,7 @@ function M.render(buf, config)
 end
 
 function M.schedule(buf, config, delay)
+    configs[buf] = config
     stop_timer(buf)
 
     local next_timer = vim.uv.new_timer()
@@ -326,6 +335,7 @@ function M.schedule(buf, config, delay)
 end
 
 function M.clear(buf)
+    configs[buf] = nil
     scroll.clear(buf)
     if vim.api.nvim_buf_is_valid(buf) then
         vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)

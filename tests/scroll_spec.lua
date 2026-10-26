@@ -73,7 +73,7 @@ local function run()
     equal(vim.bo[viewer].buflisted, false, 'viewer must not pollute the buffer list')
     equal(vim.bo[viewer].buftype, 'nofile', 'viewer must be a scratch buffer, not a file')
     equal(vim.wo[float].wrap, false, 'wide diagram geometry must not wrap')
-    equal(#vim.api.nvim_buf_get_keymap(viewer, 'n'), 2, 'only q/Esc may be mapped; motions must remain native')
+    equal(#vim.api.nvim_buf_get_keymap(viewer, 'n'), 4, 'only exit/backend-cycle keys may be mapped; motions must remain native')
     local anchor = vim.api.nvim_win_get_cursor(source_win)
     local request_count = requests
 

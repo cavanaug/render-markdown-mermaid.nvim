@@ -139,10 +139,12 @@ Normal Vim behavior applies, without remapping movement keys:
     gg / G                         First / last rendered line
     /, ?, n / N                    Native search
     Visual selection, y, yy        Select/copy rendered text
+    Tab / Shift-Tab                 Next / previous installed renderer
     q / Esc (Normal mode)          Leave diagram focus
     :MermaidFocus                  Toggle back to the Markdown source
 
-Only q/Esc are mapped in the scratch buffer; movement keys are not remapped.
+Only q/Esc and Tab/Shift-Tab are mapped in the scratch buffer; movement keys
+are not remapped.
 The source Enter shortcut opens navigation only on a rendered Mermaid block
 or preview anchor. Elsewhere it delegates to the existing Enter mapping, or
 to native Vim behavior when Enter was unmapped.
@@ -164,6 +166,33 @@ The header uses the RenderMarkdownMermaidScroll highlight group.
 false to disable the shortcut and restore the original mapping. For example:
 >lua
     opts = { focus_key = '<Tab>' }
+<
+
+SWITCHING RENDERERS                                         *:MermaidCycle*
+
+While navigating a diagram, Tab cycles to the next installed renderer and
+Shift-Tab cycles backwards. The new output reopens for native Vim navigation;
+the header identifies its renderer. Tab in the source buffer is unchanged.
+Moving away during rendering cancels automatic re-entry into the viewer.
+
+`:MermaidCycle` works from any buffer. Use `:MermaidCycle!` for the previous
+renderer. The order is selkie, bm, termaid, mermaid-ascii, merman-cli, then
+back to selkie; missing executables are skipped. Selection is session-wide
+and refreshes loaded Markdown/MDX previews without changing saved config.
+Only one installed renderer is a no-op; no renderers produces a warning.
+
+Cached output is reused on return to a backend. Explicit cmd paths/wrappers
+and width settings are retained. Merman enables automatic width fitting when
+width was unset. Backend coverage still applies: unsupported diagrams show
+an error, Selkie remains Unicode-only, and Merman can emit structured text.
+
+Optional source-buffer shortcuts: >lua
+    vim.keymap.set('n', '<leader>mc', '<Plug>(MermaidCycle)', {
+        desc = 'Next Mermaid renderer',
+    })
+    vim.keymap.set('n', '<leader>mC', '<Plug>(MermaidCycleBack)', {
+        desc = 'Previous Mermaid renderer',
+    })
 <
 
 vim:tw=78:ts=8:noet:ft=help:norl:

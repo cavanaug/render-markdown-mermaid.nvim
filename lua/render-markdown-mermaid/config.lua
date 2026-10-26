@@ -26,6 +26,35 @@ function M.available_renderers()
     return available
 end
 
+---Identify known executables even in absolute paths or wrapped commands.
+---@param command string[]
+---@return string?
+function M.renderer_name(command)
+    for _, part in ipairs(command) do
+        local name = vim.fs.basename(part)
+        for _, renderer in ipairs(ALL_RENDERERS) do
+            if name == renderer then return name end
+        end
+    end
+end
+
+---@param command string[]
+---@param available table<string, boolean>
+---@param backwards boolean
+---@return string?
+function M.next_renderer(command, available, backwards)
+    local current = M.renderer_name(command)
+    local index = backwards and 1 or 0
+    for i, renderer in ipairs(ALL_RENDERERS) do
+        if renderer == current then index = i; break end
+    end
+    for step = 1, #ALL_RENDERERS do
+        local next_index = (index - 1 + (backwards and -step or step)) % #ALL_RENDERERS + 1
+        local renderer = ALL_RENDERERS[next_index]
+        if available[renderer] then return renderer end
+    end
+end
+
 ---@param cmd? string[]
 ---@param available? table<string, boolean>
 ---@param mode? string

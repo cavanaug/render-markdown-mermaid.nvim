@@ -239,6 +239,7 @@ The diagram background extends to the right edge of the text area, including sho
 | `gg` / `G` | First / last rendered line |
 | `/`, `?`, `n` / `N` | Search the rendered diagram |
 | Visual selection, `y`, `yy` | Select and copy rendered text |
+| `Tab` / `Shift-Tab` | Next / previous installed rendering engine |
 | `q` or `Esc` in Normal mode, or `:MermaidFocus` again | Leave diagram focus |
 
 A header shows the visible row range, total rows, and whether diagram focus is active. Focus uses a borderless,
@@ -246,7 +247,7 @@ read-only scratch buffer positioned over the inline preview: the cursor moves th
 Markdown source. This also works for small diagrams when you want to select or copy their output. Wide diagrams
 do not wrap and support native horizontal scrolling.
 
-Only `q` and `Esc` are mapped in the scratch buffer; no movement keys are remapped. The source-buffer Enter shortcut
+Only exit (`q`/`Esc`) and engine-cycle (`Tab`/`Shift-Tab`) keys are mapped in the scratch buffer; movement keys remain native. The source-buffer Enter shortcut
 opens navigation only on a rendered Mermaid block/preview anchor; elsewhere it preserves the existing Enter mapping
 or native Vim behavior. Exiting restores the source cursor and window view and wipes the temporary buffer. Switching to
 another buffer/window, closing the viewer, or editing/removing its source fence also releases focus. Navigation does
@@ -266,6 +267,29 @@ opts = { focus_key = '<Tab>' } -- default: '<CR>' (Enter)
 `:MermaidFocus` remains available as an optional command.
 
 Try `samples/tall.md` for a scrolling smoke test.
+
+## Switching rendering engines
+
+While navigating a diagram, press **Tab** to try the next installed backend or **Shift-Tab** for the previous one.
+The diagram reopens with the new output, and its header shows the selected engine. Your Markdown-source Tab mapping
+is unchanged. Moving elsewhere while a slow backend renders cancels automatic re-entry into diagram navigation.
+
+You can also run `:MermaidCycle` from any buffer; `:MermaidCycle!` cycles backwards. The cycle order is:
+`selkie` → `bm` → `termaid` → `mermaid-ascii` → `merman-cli` → back to `selkie`, skipping missing executables.
+The selection is session-wide: loaded Markdown/MDX previews are refreshed, but your saved configuration is not changed.
+Cached output is reused when switching back. Custom command paths/wrappers supplied in `cmd` are retained when returning
+to their backend, and explicit width settings are preserved; Merman enables automatic width fitting when width was unset.
+
+Cycling changes the backend, not its supported diagram types: a backend that cannot render the current diagram shows
+its usual render error. Selkie still emits Unicode even with `mode = 'ascii'`. Merman may emit structured text rather
+than a diagram, as described above.
+
+Optional shortcuts outside the diagram viewer:
+
+```lua
+vim.keymap.set('n', '<leader>mc', '<Plug>(MermaidCycle)', { desc = 'Next Mermaid renderer' })
+vim.keymap.set('n', '<leader>mC', '<Plug>(MermaidCycleBack)', { desc = 'Previous Mermaid renderer' })
+```
 
 ## Health check
 

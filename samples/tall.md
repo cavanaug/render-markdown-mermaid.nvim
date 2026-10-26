@@ -3,6 +3,7 @@
 Place the cursor on the Mermaid fence and press Enter once. Use normal Vim
 motions, `/` to search, or visual selection and `y` to copy rendered text.
 Press `q` or `Esc` in Normal mode to return to the Markdown source.
+Inside the diagram, Tab / Shift-Tab cycles installed rendering engines.
 
 ```mermaid
 flowchart TD

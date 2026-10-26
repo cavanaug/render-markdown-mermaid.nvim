@@ -3,6 +3,16 @@
 local M = {}
 local buffers = {}
 local focus = nil
+local pending_focus = nil
+
+local function pending_is_current()
+    return pending_focus and vim.api.nvim_win_is_valid(pending_focus.win)
+        and vim.api.nvim_buf_is_valid(pending_focus.buf)
+        and vim.api.nvim_get_current_win() == pending_focus.win
+        and vim.api.nvim_get_current_buf() == pending_focus.buf
+        and vim.api.nvim_buf_get_changedtick(pending_focus.buf) == pending_focus.tick
+        and vim.deep_equal(vim.api.nvim_win_get_cursor(0), pending_focus.cursor)
+end
 
 local function paint(entry)
     local active = focus and focus.entry == entry
@@ -22,8 +32,9 @@ local function paint(entry)
     if active or #entry.lines > entry.height then
         local key = entry.focus_key == false and ':MermaidFocus'
             or (entry.focus_key == '<CR>' and 'Enter' or entry.focus_key or 'Enter')
-        local hint = active and 'Vim motions | q/Esc exit' or key .. ' to navigate'
-        indicator = ('Mermaid %d-%d/%d | %s'):format(entry.first, ending, #entry.lines, hint)
+        local hint = active and 'Tab: next engine | q/Esc exit' or key .. ' to navigate'
+        local engine = entry.renderer and (' | ' .. entry.renderer) or ''
+        indicator = ('Mermaid %d-%d/%d%s | %s'):format(entry.first, ending, #entry.lines, engine, hint)
     end
     entry.draw(visible, indicator)
 end
@@ -121,6 +132,7 @@ function M.show(buf, block, lines, height, draw)
     entry.anchor_row = block.anchor_row
     entry.preview_row = block.preview_row
     entry.focus_key = block.focus_key
+    entry.renderer = block.renderer
     entry.notice_lines = block.notice_lines or 0
     entry.padding = block.padding or 0
     entry.lines = lines
@@ -154,6 +166,31 @@ function M.finish(buf)
             state.entries[row] = nil
         end
     end
+    if pending_focus and pending_focus.buf == buf then
+        if not pending_is_current() then
+            pending_focus = nil
+        elseif M.can_focus(buf) then
+            pending_focus = nil
+            M.focus(buf)
+        end
+    end
+end
+
+---Release an old renderer's viewer and reopen it once fresh output is ready,
+---unless the user moves elsewhere while the asynchronous render is running.
+function M.refresh()
+    local previous = focus
+    M.blur(true)
+    pending_focus = nil
+    if previous and vim.api.nvim_win_is_valid(previous.source_win)
+        and vim.api.nvim_buf_is_valid(previous.source_buf) then
+        pending_focus = {
+            win = previous.source_win,
+            buf = previous.source_buf,
+            tick = vim.api.nvim_buf_get_changedtick(previous.source_buf),
+            cursor = vim.api.nvim_win_get_cursor(previous.source_win),
+        }
+    end
 end
 
 local function entry_at_cursor(buf)
@@ -175,8 +212,9 @@ function M.can_focus(buf)
 end
 
 ---Focus a real read-only buffer over the rendered fence under the cursor.
----Only q/Esc are mapped; all navigation is Neovim's ordinary buffer behavior.
+---Exit/cycle keys are local; movement uses Neovim's ordinary buffer behavior.
 function M.focus(buf)
+    pending_focus = nil
     if focus then
         if focus.win and vim.api.nvim_win_is_valid(focus.win) then
             M.blur(true)
@@ -220,6 +258,8 @@ function M.focus(buf)
                 buffer = scratch, nowait = true, desc = 'Return to Markdown',
             })
         end
+        vim.keymap.set('n', '<Tab>', '<Cmd>MermaidCycle<CR>', { buffer = scratch, desc = 'Next Mermaid renderer' })
+        vim.keymap.set('n', '<S-Tab>', '<Cmd>MermaidCycle!<CR>', { buffer = scratch, desc = 'Previous Mermaid renderer' })
         state_focus.layout = layout(state_focus)
         local win = vim.api.nvim_open_win(scratch, false, state_focus.layout)
         state_focus.win = win
@@ -245,6 +285,7 @@ end
 ---Mirror the real window's visible range back to the inline preview. This
 ---observes native motions; it does not implement or remap them.
 function M.check()
+    if pending_focus and not pending_is_current() then pending_focus = nil end
     if not focus or focus.busy then return end
     if not vim.api.nvim_win_is_valid(focus.source_win)
         or not vim.api.nvim_buf_is_valid(focus.source_buf)
@@ -263,6 +304,7 @@ function M.changed(buf)
 end
 
 function M.clear(buf)
+    if pending_focus and (not buf or pending_focus.buf == buf) then pending_focus = nil end
     if focus and (not buf or focus.source_buf == buf) then M.blur() end
     if buf then
         buffers[buf] = nil
