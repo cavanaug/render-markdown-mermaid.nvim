@@ -20,7 +20,9 @@ local function paint(entry)
     end
     local indicator = nil
     if active or #entry.lines > entry.height then
-        local hint = active and 'Vim motions | q/Esc exit' or ':MermaidFocus to navigate'
+        local key = entry.focus_key == false and ':MermaidFocus'
+            or (entry.focus_key == '<CR>' and 'Enter' or entry.focus_key or 'Enter')
+        local hint = active and 'Vim motions | q/Esc exit' or key .. ' to navigate'
         indicator = ('Mermaid %d-%d/%d | %s'):format(entry.first, ending, #entry.lines, hint)
     end
     entry.draw(visible, indicator)
@@ -64,7 +66,7 @@ local function layout(state)
     return {
         relative = 'win',
         win = source,
-        bufpos = { entry.above and entry.start_row or entry.end_row - 1, 0 },
+        bufpos = { entry.anchor_row, 0 },
         row = entry.above and -entry.height or 2 + entry.notice_lines,
         col = 0,
         width = math.max(1, vim.api.nvim_win_get_width(source) - info.textoff),
@@ -114,6 +116,9 @@ function M.show(buf, block, lines, height, draw)
     entry.start_row = block.start_row
     entry.end_row = block.end_row
     entry.above = block.above
+    entry.anchor_row = block.anchor_row
+    entry.preview_row = block.preview_row
+    entry.focus_key = block.focus_key
     entry.notice_lines = block.notice_lines or 0
     entry.lines = lines
     entry.limit = height
@@ -148,6 +153,24 @@ function M.finish(buf)
     end
 end
 
+local function entry_at_cursor(buf)
+    local state = buffers[buf]
+    if not state or state.tick ~= vim.api.nvim_buf_get_changedtick(buf) then return nil end
+    local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+    local anchor = nil
+    for _, entry in pairs(state.entries) do
+        -- An actual fence takes precedence when previews are adjacent.
+        if row >= entry.start_row and row < entry.end_row then return entry end
+        if row == entry.anchor_row or row == entry.preview_row then anchor = entry end
+    end
+    return anchor
+end
+
+---Read-only lookup: safe to call from an expression mapping under textlock.
+function M.can_focus(buf)
+    return entry_at_cursor(buf) ~= nil
+end
+
 ---Focus a real read-only buffer over the rendered fence under the cursor.
 ---Only q/Esc are mapped; all navigation is Neovim's ordinary buffer behavior.
 function M.focus(buf)
@@ -160,21 +183,9 @@ function M.focus(buf)
         -- runs. Do not treat that stale state as a request to toggle off.
         M.blur()
     end
-    local row = vim.api.nvim_win_get_cursor(0)[1] - 1
-    local state = buffers[buf]
-    if state and state.tick ~= vim.api.nvim_buf_get_changedtick(buf) then
-        buffers[buf] = nil
-        state = nil
-    end
-    local entry = nil
-    for _, candidate in pairs(state and state.entries or {}) do
-        if row >= candidate.start_row and row < candidate.end_row then
-            entry = candidate
-            break
-        end
-    end
+    local entry = entry_at_cursor(buf)
     if not entry then
-        vim.notify('Place the cursor inside a rendered Mermaid fence first.', vim.log.levels.INFO)
+        vim.notify('Place the cursor on a rendered Mermaid block or its preview anchor.', vim.log.levels.INFO)
         return
     end
     local source = vim.api.nvim_get_current_win()
@@ -187,7 +198,7 @@ function M.focus(buf)
     }
     focus = state_focus
     entry.height = focused_height(entry, source)
-    local anchor = entry.above and entry.start_row + 1 or entry.end_row
+    local anchor = math.min(entry.anchor_row + 1, vim.api.nvim_buf_line_count(buf))
     vim.api.nvim_win_set_cursor(source, { anchor, 0 })
     paint(entry)
     align_source(state_focus)

@@ -73,6 +73,7 @@ M.default = {
     hide_source = false,
     max_block_lines = 200,
     max_preview_lines = 'auto',
+    focus_key = '<CR>',
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
@@ -110,6 +111,10 @@ function M.merge(opts)
 
     merged.cli = merged.cli or {}
     merged.cli.ascii = nil
+
+    if merged.focus_key ~= false and (type(merged.focus_key) ~= 'string' or merged.focus_key == '') then
+        merged.focus_key = M.default.focus_key
+    end
 
     if merged.max_preview_lines ~= 'auto' and merged.max_preview_lines ~= false then
         local height = merged.max_preview_lines

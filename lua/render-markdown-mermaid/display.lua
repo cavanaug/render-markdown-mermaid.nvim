@@ -232,11 +232,19 @@ function M.render(buf, config)
 
                 if entry and entry.status == 'done' then
                     local mark = nil
+                    local focus_row = config.placement == 'below' and end_row - 1 or start_row
+                    local focus_above = config.placement ~= 'below'
+                    if replacing then
+                        focus_row, focus_above = preview_row, preview_above
+                    end
                     scroll.show(buf, {
                         start_row = start_row,
                         end_row = end_row,
                         key = key,
-                        above = config.placement ~= 'below',
+                        above = focus_above,
+                        anchor_row = focus_row,
+                        preview_row = preview_row,
+                        focus_key = config.focus_key,
                         notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
                     }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
                         if vim.api.nvim_buf_is_valid(buf) then

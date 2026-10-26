@@ -1,6 +1,6 @@
 # Tall diagram scrolling
 
-Place the cursor in the Mermaid fence and run `:MermaidFocus`. Use normal Vim
+Place the cursor on the Mermaid fence and press Enter once. Use normal Vim
 motions, `/` to search, or visual selection and `y` to copy rendered text.
 Press `q` or `Esc` in Normal mode to return to the Markdown source.
 

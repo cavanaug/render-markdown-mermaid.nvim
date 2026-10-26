@@ -1,6 +1,7 @@
 local config_mod = require('render-markdown-mermaid.config')
 local display = require('render-markdown-mermaid.display')
 local scroll = require('render-markdown-mermaid.scroll')
+local navigation = require('render-markdown-mermaid.navigation')
 
 local M = {
     config = nil,
@@ -42,6 +43,7 @@ function M.setup(opts)
     vim.api.nvim_create_user_command('MermaidFocus', function()
         scroll.focus(vim.api.nvim_get_current_buf())
     end, { desc = 'Toggle navigating the Mermaid diagram under the cursor', force = true })
+    navigation.setup(M.config.focus_key, group)
     vim.api.nvim_create_autocmd({ 'BufLeave', 'WinLeave', 'WinClosed', 'BufEnter', 'WinEnter' }, {
         group = group,
         callback = function() vim.schedule(scroll.check) end,

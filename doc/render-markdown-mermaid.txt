@@ -60,6 +60,7 @@ Default values: >
         hide_source = false,
         max_block_lines = 200,
         max_preview_lines = 'auto',
+        focus_key = '<CR>',
         render_markdown = {
             file_types = { 'markdown', 'mdx', 'markdown.mdx' },
         },
@@ -116,7 +117,9 @@ uses half the window height. A positive integer sets the diagram-row budget,
 still capped to fit the window. Set `false` for unlimited inline output.
 Small diagrams render unchanged, without a scrolling header.
 
-Place the cursor inside a rendered Mermaid fence and run `:MermaidFocus`.
+Place the cursor on a rendered Mermaid fence or its inline preview anchor,
+then press Enter once. No command is required. `:MermaidFocus` is an optional
+alternative.
 A read-only scratch buffer overlays the inline preview, putting a real cursor
 in the rendered output. The header shows the visible row range and total rows.
 Normal Vim behavior applies, without remapping movement keys:
@@ -129,7 +132,10 @@ Normal Vim behavior applies, without remapping movement keys:
     q / Esc (Normal mode)          Leave diagram focus
     :MermaidFocus                  Toggle back to the Markdown source
 
-Only q/Esc are mapped in the scratch buffer. Source mappings are untouched.
+Only q/Esc are mapped in the scratch buffer; movement keys are not remapped.
+The source Enter shortcut opens navigation only on a rendered Mermaid block
+or preview anchor. Elsewhere it delegates to the existing Enter mapping, or
+to native Vim behavior when Enter was unmapped.
 On exit, the original source cursor and window view are restored and the
 scratch buffer is wiped. Switching buffers/windows, closing the viewer, or
 editing/removing its source fence also releases focus. Navigation reuses
@@ -144,10 +150,10 @@ it visible while focused. Report/fallback notices stay outside the scrolling
 rows. Even with max_preview_lines = false, focus uses a screen-sized window.
 The header uses the RenderMarkdownMermaidScroll highlight group.
 
-Optional shortcut: >lua
-    vim.keymap.set('n', '<leader>ms', '<Cmd>MermaidFocus<CR>', {
-        desc = 'Focus Mermaid diagram',
-    })
+`focus_key` changes the source-buffer shortcut (default: '<CR>'). Set it to
+false to disable the shortcut and restore the original mapping. For example:
+>lua
+    opts = { focus_key = '<Tab>' }
 <
 
 vim:tw=78:ts=8:noet:ft=help:norl:

@@ -180,6 +180,7 @@ flowchart TD
     hide_source = false,
     max_block_lines = 200,
     max_preview_lines = 'auto', -- cap inline diagram height; number of rows, or false for unlimited
+    focus_key = '<CR>', -- Enter on a Mermaid block opens navigation; false disables the shortcut
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
@@ -218,8 +219,8 @@ Tall diagrams render in a bounded inline viewport instead of consuming the whole
 `max_preview_lines = 'auto'` allows half the window height for diagram rows. Set a positive integer for a fixed
 row budget (still capped to fit the window), or `false` to restore unlimited inline output. Small diagrams are unchanged.
 
-1. Place your cursor anywhere inside the Mermaid source fence.
-2. Run `:MermaidFocus` to put the real cursor inside its rendered diagram.
+1. Place your cursor on the Mermaid source fence or the real line anchoring its inline preview.
+2. Press **Enter** once to put the real cursor inside the rendered diagram. No command is required.
 3. Navigate using ordinary Vim motions:
 
 | Keys | Action |
@@ -236,8 +237,9 @@ read-only scratch buffer positioned over the inline preview: the cursor moves th
 Markdown source. This also works for small diagrams when you want to select or copy their output. Wide diagrams
 do not wrap and support native horizontal scrolling.
 
-Only `q` and `Esc` are mapped in the scratch buffer; no movement keys are remapped, and source-buffer mappings
-are never changed. Exiting restores the source cursor and window view and wipes the temporary buffer. Switching to
+Only `q` and `Esc` are mapped in the scratch buffer; no movement keys are remapped. The source-buffer Enter shortcut
+opens navigation only on a rendered Mermaid block/preview anchor; elsewhere it preserves the existing Enter mapping
+or native Vim behavior. Exiting restores the source cursor and window view and wipes the temporary buffer. Switching to
 another buffer/window, closing the viewer, or editing/removing its source fence also releases focus. Navigation does
 not rerun the renderer or modify the Markdown file.
 
@@ -246,11 +248,13 @@ shared between windows showing the same buffer, so their scroll position is shar
 of those windows. Resizing updates the row budget and keeps a focused viewport visible. Renderer notices remain
 visible above the diagram. With `max_preview_lines = false`, focused navigation still uses a screen-sized window.
 
-For an optional shortcut, add your own mapping:
+Set `focus_key` to another key to change the shortcut, or `false` to disable it and restore the original mapping:
 
 ```lua
-vim.keymap.set('n', '<leader>ms', '<Cmd>MermaidFocus<CR>', { desc = 'Focus Mermaid diagram' })
+opts = { focus_key = '<Tab>' } -- default: '<CR>' (Enter)
 ```
+
+`:MermaidFocus` remains available as an optional command.
 
 Try `samples/tall.md` for a scrolling smoke test.
 
