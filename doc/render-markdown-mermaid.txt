@@ -59,6 +59,7 @@ Default values: >
         cache = true,
         hide_source = false,
         max_block_lines = 200,
+        max_preview_lines = 'auto',
         render_markdown = {
             file_types = { 'markdown', 'mdx', 'markdown.mdx' },
         },
@@ -107,5 +108,46 @@ insert mode reveals the source again and falls back to `placement`.
 
 If `hide_source = true`, the raw mermaid fence is concealed whenever the cursor
 is outside the fence, while the rendered diagram stays visible.
+
+SCROLLING TALL DIAGRAMS                                    *:MermaidFocus*
+
+`max_preview_lines` bounds the inline diagram's height. The default, `'auto'`,
+uses half the window height. A positive integer sets the diagram-row budget,
+still capped to fit the window. Set `false` for unlimited inline output.
+Small diagrams render unchanged, without a scrolling header.
+
+Place the cursor inside a rendered Mermaid fence and run `:MermaidFocus`.
+A read-only scratch buffer overlays the inline preview, putting a real cursor
+in the rendered output. The header shows the visible row range and total rows.
+Normal Vim behavior applies, without remapping movement keys:
+
+    h/j/k/l, w/b, f, counts         Cursor motions through rendered text
+    Ctrl-d/u, Ctrl-f/b, wheel      Native scrolling
+    gg / G                         First / last rendered line
+    /, ?, n / N                    Native search
+    Visual selection, y, yy        Select/copy rendered text
+    q / Esc (Normal mode)          Leave diagram focus
+    :MermaidFocus                  Toggle back to the Markdown source
+
+Only q/Esc are mapped in the scratch buffer. Source mappings are untouched.
+On exit, the original source cursor and window view are restored and the
+scratch buffer is wiped. Switching buffers/windows, closing the viewer, or
+editing/removing its source fence also releases focus. Navigation reuses
+rendered output without invoking the CLI or modifying the Markdown source.
+Wide output does not wrap; native horizontal scrolling works too. Small
+diagrams can also be focused to select/copy their rendered text.
+
+Diagram cursor and scroll positions are per fence, retained until the buffer
+text changes. Inactive virtual lines are shared between source windows; the
+viewport fits the smallest window. Resizing adjusts the viewport and keeps
+it visible while focused. Report/fallback notices stay outside the scrolling
+rows. Even with max_preview_lines = false, focus uses a screen-sized window.
+The header uses the RenderMarkdownMermaidScroll highlight group.
+
+Optional shortcut: >lua
+    vim.keymap.set('n', '<leader>ms', '<Cmd>MermaidFocus<CR>', {
+        desc = 'Focus Mermaid diagram',
+    })
+<
 
 vim:tw=78:ts=8:noet:ft=help:norl:

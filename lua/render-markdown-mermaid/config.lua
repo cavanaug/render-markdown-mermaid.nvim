@@ -72,6 +72,7 @@ M.default = {
     cache = true,
     hide_source = false,
     max_block_lines = 200,
+    max_preview_lines = 'auto',
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
@@ -109,6 +110,15 @@ function M.merge(opts)
 
     merged.cli = merged.cli or {}
     merged.cli.ascii = nil
+
+    if merged.max_preview_lines ~= 'auto' and merged.max_preview_lines ~= false then
+        local height = merged.max_preview_lines
+        if type(height) == 'number' and height >= 1 and height < math.huge then
+            merged.max_preview_lines = math.floor(height)
+        else
+            merged.max_preview_lines = M.default.max_preview_lines
+        end
+    end
 
     local has_user_cmd = opts and opts.cmd and opts.cmd[1]
     merged._cmd_source = has_user_cmd and 'user' or 'auto'

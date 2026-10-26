@@ -179,6 +179,7 @@ flowchart TD
     cache = true,
     hide_source = false,
     max_block_lines = 200,
+    max_preview_lines = 'auto', -- cap inline diagram height; number of rows, or false for unlimited
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
     },
@@ -210,6 +211,48 @@ notice line (highlighted with `RenderMarkdownMermaidNotice`, text configurable v
 they are distinguishable from diagrams. Set `width = false` to opt out of width fitting while using `merman-cli`.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
+
+## Scrolling tall diagrams
+
+Tall diagrams render in a bounded inline viewport instead of consuming the whole page. By default,
+`max_preview_lines = 'auto'` allows half the window height for diagram rows. Set a positive integer for a fixed
+row budget (still capped to fit the window), or `false` to restore unlimited inline output. Small diagrams are unchanged.
+
+1. Place your cursor anywhere inside the Mermaid source fence.
+2. Run `:MermaidFocus` to put the real cursor inside its rendered diagram.
+3. Navigate using ordinary Vim motions:
+
+| Keys | Action |
+| --- | --- |
+| `h` / `j` / `k` / `l`, `w` / `b`, `f`, counts | Move through the rendered text normally |
+| `Ctrl-d` / `Ctrl-u`, `Ctrl-f` / `Ctrl-b`, mouse wheel | Native window scrolling |
+| `gg` / `G` | First / last rendered line |
+| `/`, `?`, `n` / `N` | Search the rendered diagram |
+| Visual selection, `y`, `yy` | Select and copy rendered text |
+| `q` or `Esc` in Normal mode, or `:MermaidFocus` again | Leave diagram focus |
+
+A header shows the visible row range, total rows, and whether diagram focus is active. Focus uses a borderless,
+read-only scratch buffer positioned over the inline preview: the cursor moves through real rendered lines, not the
+Markdown source. This also works for small diagrams when you want to select or copy their output. Wide diagrams
+do not wrap and support native horizontal scrolling.
+
+Only `q` and `Esc` are mapped in the scratch buffer; no movement keys are remapped, and source-buffer mappings
+are never changed. Exiting restores the source cursor and window view and wipes the temporary buffer. Switching to
+another buffer/window, closing the viewer, or editing/removing its source fence also releases focus. Navigation does
+not rerun the renderer or modify the Markdown file.
+
+Each fence retains its own diagram cursor and scroll position until the buffer text changes. Inactive virtual lines are
+shared between windows showing the same buffer, so their scroll position is shared too; the viewport fits the smallest
+of those windows. Resizing updates the row budget and keeps a focused viewport visible. Renderer notices remain
+visible above the diagram. With `max_preview_lines = false`, focused navigation still uses a screen-sized window.
+
+For an optional shortcut, add your own mapping:
+
+```lua
+vim.keymap.set('n', '<leader>ms', '<Cmd>MermaidFocus<CR>', { desc = 'Focus Mermaid diagram' })
+```
+
+Try `samples/tall.md` for a scrolling smoke test.
 
 ## Health check
 

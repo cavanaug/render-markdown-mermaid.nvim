@@ -1,6 +1,7 @@
 local cache = require('render-markdown-mermaid.cache')
 local renderer = require('render-markdown-mermaid.renderer')
 local util = require('render-markdown-mermaid.util')
+local scroll = require('render-markdown-mermaid.scroll')
 
 local M = {
     ns = vim.api.nvim_create_namespace('render-markdown-mermaid.nvim'),
@@ -33,6 +34,10 @@ local function is_supported(buf)
 end
 
 local function current_row(buf)
+    local current = vim.api.nvim_get_current_win()
+    if vim.api.nvim_win_get_buf(current) == buf then
+        return vim.api.nvim_win_get_cursor(current)[1] - 1
+    end
     local wins = vim.fn.win_findbuf(buf)
     if #wins == 0 then
         return nil
@@ -67,6 +72,20 @@ local function resolve_width(config, buf)
         return config.width
     end
     return window_width(buf)
+end
+
+local function preview_height(config, buf, total)
+    if config.max_preview_lines == false then
+        return math.max(1, total)
+    end
+    -- Extmarks are buffer-local and shared by all windows showing the buffer.
+    -- Fit the smallest window rather than clipping the diagram in a split.
+    local height = vim.o.lines
+    for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+        height = math.min(height, vim.api.nvim_win_get_height(win))
+    end
+    local requested = config.max_preview_lines == 'auto' and math.floor(height / 2) or config.max_preview_lines
+    return math.max(1, math.min(requested, height - 4))
 end
 
 local function cursor_inside_block(row, start_row, end_row)
@@ -105,13 +124,17 @@ local function preview_anchor(config, start_row, end_row, replacing)
     return start_row, true
 end
 
-local function render_preview(buf, row, lines, above, notice)
+local function render_preview(buf, row, lines, above, notice, indicator, id)
     local virt_lines = {}
     if notice and notice ~= '' then
         virt_lines[#virt_lines + 1] = { { notice, 'RenderMarkdownMermaidNotice' } }
     end
+    if indicator then
+        virt_lines[#virt_lines + 1] = { { indicator, 'RenderMarkdownMermaidScroll' } }
+    end
     vim.list_extend(virt_lines, util.to_virt_lines(lines))
-    vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
+    return vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
+        id = id,
         virt_lines = virt_lines,
         virt_lines_above = above,
         priority = 200,
@@ -183,6 +206,7 @@ function M.render(buf, config)
     end
 
     vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
+    scroll.begin(buf)
     local row = current_row(buf)
     local editing = in_insert_mode()
     local width = resolve_width(config, buf)
@@ -207,7 +231,23 @@ function M.render(buf, config)
                 local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing)
 
                 if entry and entry.status == 'done' then
-                    render_preview(buf, preview_row, entry.lines, preview_above, entry.notice)
+                    local mark = nil
+                    scroll.show(buf, {
+                        start_row = start_row,
+                        end_row = end_row,
+                        key = key,
+                        above = config.placement ~= 'below',
+                        notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
+                    }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
+                        if vim.api.nvim_buf_is_valid(buf) then
+                            -- A full render may already have removed this mark
+                            -- while releasing focus on an edited/removed fence.
+                            if mark and #vim.api.nvim_buf_get_extmark_by_id(buf, M.ns, mark, {}) == 0 then
+                                return
+                            end
+                            mark = render_preview(buf, preview_row, visible, preview_above, entry.notice, indicator, mark)
+                        end
+                    end)
                 elseif entry and entry.status == 'error' then
                     render_message(buf, preview_row, config.ui.error, 'RenderMarkdownMermaidError', preview_above)
                 else
@@ -232,6 +272,7 @@ function M.render(buf, config)
             end
         end
     end
+    scroll.finish(buf)
 end
 
 function M.schedule(buf, config, delay)
@@ -249,6 +290,7 @@ function M.schedule(buf, config, delay)
 end
 
 function M.clear(buf)
+    scroll.clear(buf)
     if vim.api.nvim_buf_is_valid(buf) then
         vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
     end
