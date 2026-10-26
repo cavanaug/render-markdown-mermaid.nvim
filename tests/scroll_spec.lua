@@ -48,7 +48,7 @@ local function new_buffer()
 end
 local function setup(opts)
     plugin.setup(vim.tbl_extend('force', {
-        auto_setup_render_markdown = false, debounce = 0, max_preview_lines = 10,
+        auto_setup_render_markdown = false, debounce = 0, max_preview_lines = 10, center = false,
     }, opts or {}))
 end
 
@@ -240,7 +240,7 @@ local function run()
 
     local config = require('render-markdown-mermaid.config')
     for _, value in ipairs({ 0, -1, 'invalid', math.huge }) do
-        equal(config.merge({ max_preview_lines = value }).max_preview_lines, 'auto', 'invalid height must fall back to auto')
+        equal(config.merge({ max_preview_lines = value }).max_preview_lines, '75%', 'invalid height must fall back to the default percentage')
     end
     print('inline cursor navigation: all checks passed')
 end

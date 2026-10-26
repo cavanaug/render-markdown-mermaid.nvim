@@ -59,7 +59,8 @@ Default values: >
         cache = true,
         hide_source = false,
         max_block_lines = 200,
-        max_preview_lines = 'auto',
+        max_preview_lines = '75%',
+        center = true,
         focus_key = '<CR>',
         render_markdown = {
             file_types = { 'markdown', 'mdx', 'markdown.mdx' },
@@ -112,10 +113,19 @@ is outside the fence, while the rendered diagram stays visible.
 
 SCROLLING TALL DIAGRAMS                                    *:MermaidFocus*
 
-`max_preview_lines` bounds the inline diagram's height. The default, `'auto'`,
-uses half the window height. A positive integer sets the diagram-row budget,
-still capped to fit the window. Set `false` for unlimited inline output.
+`max_preview_lines` bounds the inline diagram's height. The default, `'75%'`,
+uses up to 75% of the window height and recalculates on resize. Percentage
+strings (for example '50%' or '90%') must be greater than 0 and at most 100.
+A few rows remain reserved for the header and source anchor. Existing positive
+integers still set a fixed row budget, capped to fit the window. Set `false`
+for unlimited inline output. Legacy 'auto' resolves to the '75%' default.
 Small diagrams render unchanged, without a scrolling header.
+
+`center = true` horizontally centers diagrams in the text area, excluding
+number/sign columns. Padding uses the widest row of the full diagram and
+remains constant across rows/pages. Focus keeps the same alignment without
+adding spaces to copied text. Diagrams wider than the window stay left-aligned
+for horizontal scrolling. Set `center = false` for original left alignment.
 
 Place the cursor on a rendered Mermaid fence or its inline preview anchor,
 then press Enter once. No command is required. `:MermaidFocus` is an optional

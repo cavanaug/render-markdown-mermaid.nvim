@@ -84,8 +84,24 @@ local function preview_height(config, buf, total)
     for _, win in ipairs(vim.fn.win_findbuf(buf)) do
         height = math.min(height, vim.api.nvim_win_get_height(win))
     end
-    local requested = config.max_preview_lines == 'auto' and math.floor(height / 2) or config.max_preview_lines
+    local limit = config.max_preview_lines
+    local percent = type(limit) == 'string' and tonumber(limit:match('^(%d+%.?%d*)%%$')) or nil
+    local requested = percent and math.floor(height * percent / 100) or limit
     return math.max(1, math.min(requested, height - 4))
+end
+
+local function preview_padding(config, buf, lines)
+    if not config.center then return 0 end
+    local width = vim.o.columns
+    for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+        local info = vim.fn.getwininfo(win)[1]
+        width = math.min(width, vim.api.nvim_win_get_width(win) - info.textoff)
+    end
+    local widest = 0
+    for _, line in ipairs(lines) do
+        widest = math.max(widest, vim.fn.strdisplaywidth(line))
+    end
+    return math.max(0, math.floor((width - widest) / 2))
 end
 
 local function cursor_inside_block(row, start_row, end_row)
@@ -124,7 +140,7 @@ local function preview_anchor(config, start_row, end_row, replacing)
     return start_row, true
 end
 
-local function render_preview(buf, row, lines, above, notice, indicator, id)
+local function render_preview(buf, row, lines, above, notice, indicator, padding, id)
     local virt_lines = {}
     if notice and notice ~= '' then
         virt_lines[#virt_lines + 1] = { { notice, 'RenderMarkdownMermaidNotice' } }
@@ -132,7 +148,10 @@ local function render_preview(buf, row, lines, above, notice, indicator, id)
     if indicator then
         virt_lines[#virt_lines + 1] = { { indicator, 'RenderMarkdownMermaidScroll' } }
     end
-    vim.list_extend(virt_lines, util.to_virt_lines(lines))
+    local aligned = {}
+    local prefix = string.rep(' ', padding)
+    for _, line in ipairs(lines) do aligned[#aligned + 1] = prefix .. line end
+    vim.list_extend(virt_lines, util.to_virt_lines(aligned))
     return vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
         id = id,
         virt_lines = virt_lines,
@@ -232,6 +251,7 @@ function M.render(buf, config)
 
                 if entry and entry.status == 'done' then
                     local mark = nil
+                    local padding = preview_padding(config, buf, entry.lines)
                     local focus_row = config.placement == 'below' and end_row - 1 or start_row
                     local focus_above = config.placement ~= 'below'
                     if replacing then
@@ -246,6 +266,7 @@ function M.render(buf, config)
                         preview_row = preview_row,
                         focus_key = config.focus_key,
                         notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
+                        padding = padding,
                     }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
                         if vim.api.nvim_buf_is_valid(buf) then
                             -- A full render may already have removed this mark
@@ -253,7 +274,7 @@ function M.render(buf, config)
                             if mark and #vim.api.nvim_buf_get_extmark_by_id(buf, M.ns, mark, {}) == 0 then
                                 return
                             end
-                            mark = render_preview(buf, preview_row, visible, preview_above, entry.notice, indicator, mark)
+                            mark = render_preview(buf, preview_row, visible, preview_above, entry.notice, indicator, padding, mark)
                         end
                     end)
                 elseif entry and entry.status == 'error' then

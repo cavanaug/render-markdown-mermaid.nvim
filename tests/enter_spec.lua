@@ -19,7 +19,7 @@ local function keys(input)
 end
 local function setup(opts)
     plugin.setup(vim.tbl_extend('force', {
-        auto_setup_render_markdown = false, debounce = 0, max_preview_lines = 8,
+        auto_setup_render_markdown = false, debounce = 0, max_preview_lines = 8, center = false,
     }, opts or {}))
 end
 local function new_buffer(ft)

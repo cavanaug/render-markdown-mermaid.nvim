@@ -179,7 +179,8 @@ flowchart TD
     cache = true,
     hide_source = false,
     max_block_lines = 200,
-    max_preview_lines = 'auto', -- cap inline diagram height; number of rows, or false for unlimited
+    max_preview_lines = '75%', -- percentage of window height; number of rows, or false for unlimited
+    center = true, -- horizontally center diagrams that fit in the available text area
     focus_key = '<CR>', -- Enter on a Mermaid block opens navigation; false disables the shortcut
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
@@ -216,8 +217,15 @@ they are distinguishable from diagrams. Set `width = false` to opt out of width 
 ## Scrolling tall diagrams
 
 Tall diagrams render in a bounded inline viewport instead of consuming the whole page. By default,
-`max_preview_lines = 'auto'` allows half the window height for diagram rows. Set a positive integer for a fixed
-row budget (still capped to fit the window), or `false` to restore unlimited inline output. Small diagrams are unchanged.
+`max_preview_lines = '75%'` allows up to 75% of the window height for diagram rows and recalculates on resize.
+Use a percentage string such as `'50%'` or `'90%'` (greater than 0 and at most 100). A few rows are always reserved
+for the header and source anchor. Existing positive integers still set a fixed row budget, `false` restores unlimited
+inline output, and legacy `'auto'` resolves to the new `'75%'` default. Small diagrams are unchanged.
+
+`center = true` horizontally centers diagrams in the available text area, excluding number/sign columns. The same
+padding is applied to every row and based on the widest row of the full diagram, so the layout stays aligned while
+scrolling. The focused view keeps that alignment without adding spaces to the rendered text you copy. Diagrams
+wider than the window remain left-aligned for horizontal scrolling. Set `center = false` for the original left alignment.
 
 1. Place your cursor on the Mermaid source fence or the real line anchoring its inline preview.
 2. Press **Enter** once to put the real cursor inside the rendered diagram. No command is required.

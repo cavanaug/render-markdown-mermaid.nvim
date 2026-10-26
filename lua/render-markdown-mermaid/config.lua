@@ -72,7 +72,8 @@ M.default = {
     cache = true,
     hide_source = false,
     max_block_lines = 200,
-    max_preview_lines = 'auto',
+    max_preview_lines = '75%',
+    center = true,
     focus_key = '<CR>',
     render_markdown = {
         file_types = { 'markdown', 'mdx', 'markdown.mdx' },
@@ -116,9 +117,12 @@ function M.merge(opts)
         merged.focus_key = M.default.focus_key
     end
 
-    if merged.max_preview_lines ~= 'auto' and merged.max_preview_lines ~= false then
+    if merged.max_preview_lines ~= false then
         local height = merged.max_preview_lines
-        if type(height) == 'number' and height >= 1 and height < math.huge then
+        local percent = type(height) == 'string' and tonumber(height:match('^(%d+%.?%d*)%%$')) or nil
+        if percent and percent > 0 and percent <= 100 then
+            merged.max_preview_lines = height
+        elseif type(height) == 'number' and height >= 1 and height < math.huge then
             merged.max_preview_lines = math.floor(height)
         else
             merged.max_preview_lines = M.default.max_preview_lines

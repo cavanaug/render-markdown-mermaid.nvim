@@ -63,13 +63,15 @@ local function layout(state)
     local entry = state.entry
     local source = state.source_win
     local info = vim.fn.getwininfo(source)[1]
+    local width = math.max(1, vim.api.nvim_win_get_width(source) - info.textoff)
+    local padding = math.min(entry.padding, math.floor((width - 1) / 2))
     return {
         relative = 'win',
         win = source,
         bufpos = { entry.anchor_row, 0 },
         row = entry.above and -entry.height or 2 + entry.notice_lines,
-        col = 0,
-        width = math.max(1, vim.api.nvim_win_get_width(source) - info.textoff),
+        col = padding,
+        width = math.max(1, width - 2 * padding),
         height = entry.height,
         focusable = true,
         style = 'minimal',
@@ -120,6 +122,7 @@ function M.show(buf, block, lines, height, draw)
     entry.preview_row = block.preview_row
     entry.focus_key = block.focus_key
     entry.notice_lines = block.notice_lines or 0
+    entry.padding = block.padding or 0
     entry.lines = lines
     entry.limit = height
     entry.height = height
