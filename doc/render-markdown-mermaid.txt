@@ -1,8 +1,8 @@
 *render-markdown-mermaid.txt*  Inline mermaid rendering for render-markdown.nvim
 
 render-markdown-mermaid.nvim renders fenced |mermaid| code blocks inline with
-|render-markdown.nvim| by calling Beautiful Mermaid (`bm`), `termaid`, or
-`mermaid-ascii`.
+|render-markdown.nvim| by calling `selkie` (default), Beautiful Mermaid (`bm`),
+`termaid`, `mermaid-ascii`, or `merman-cli` (opt-in).
 The default setup attaches to both Markdown and MDX buffers.
 
 INSTALL
@@ -32,8 +32,9 @@ Use:
     :checkhealth render-markdown-mermaid
 <
 
-This verifies that `render-markdown.nvim`, `bm`, `termaid`, and `mermaid-ascii` are
-available, then reports which renderer will be selected by default.
+This verifies that `render-markdown.nvim`, `selkie`, `bm`, `termaid`,
+`mermaid-ascii`, and `merman-cli` are available, then reports which renderer
+will be selected by default.
 It also checks for the `markdown` and `markdown_inline` treesitter parsers.
 
 Note that |render-markdown.nvim| may still warn about optional LaTeX support if
@@ -50,7 +51,8 @@ Default values: >
         mode = 'unicode',
         placement = 'above',
         replace = false,
-        cmd = { 'bm' },
+        cmd = { 'selkie' },
+        width = nil,
         auto_setup_render_markdown = true,
         debounce = 150,
         timeout = 2000,
@@ -65,11 +67,29 @@ Default values: >
             padding_x = 5,
             padding_y = 5,
         },
+        ui = {
+            pending = '󱎫 Mermaid rendering...',
+            error = '󱂅 Mermaid render failed',
+            report = '󰛈 Structured text report (not a diagram)',
+            fallback = '󰛈 Diagram too wide; structured text fallback',
+        },
     }
 <
 
-The default renderer selection prefers `bm`, then `termaid`, and falls back to
-`mermaid-ascii`. Set `cmd = { ... }` to override that choice explicitly.
+The default renderer selection prefers `selkie`, then `bm`, then `termaid`, and
+falls back to `mermaid-ascii`. Set `cmd = { ... }` to override that choice
+explicitly. When `mode = 'ascii'` is set, an ASCII-capable backend (`bm`, then
+`termaid`, then `mermaid-ascii`) is preferred instead, since `selkie` always
+renders with Unicode box-drawing characters.
+
+`width` enables window-width fitting for renderers that support it (currently
+`merman-cli`). `'auto'` uses the width of the window showing the buffer; a
+number fixes the column budget. When `cmd` is `merman-cli`, `width` defaults to
+`'auto'`: flowcharts and sequences retry a compact layout, and diagrams that
+still exceed the width fall back to a structured text report. Structured text
+output and fallback reports are prefixed with a notice line (`ui.report` /
+`ui.fallback`), so they are distinguishable from diagrams. Set `width = false`
+to opt out of width fitting while using `merman-cli`.
 
 `render_markdown` is an optional passthrough table forwarded to
 |render-markdown.nvim| when this plugin auto-configures it.

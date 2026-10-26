@@ -1,6 +1,6 @@
 # render-markdown-mermaid.nvim
 
-Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with Beautiful Mermaid (`bm`), `termaid`, or `mermaid-ascii`.
+Render fenced `mermaid` code blocks inline in Neovim by combining `render-markdown.nvim` with a text renderer: `selkie` (default), Beautiful Mermaid (`bm`), `termaid`, `mermaid-ascii`, or `merman-cli` (experimental).
 The default setup attaches to both Markdown and MDX buffers.
 
 ## Requirements
@@ -8,16 +8,32 @@ The default setup attaches to both Markdown and MDX buffers.
 - Neovim `0.10+`
 - [`nvim-treesitter`](https://github.com/nvim-treesitter/nvim-treesitter) with `markdown` and `markdown_inline` parsers
 - [`render-markdown.nvim`](https://github.com/MeanderingProgrammer/render-markdown.nvim)
-- Beautiful Mermaid (`bm`) in your `PATH` (preferred), `termaid`, or `mermaid-ascii`
+- `selkie` in your `PATH` (default renderer), or `bm` / `termaid` / `mermaid-ascii`; `merman-cli` works as an opt-in override
 
 ## Install a renderer
 
 This plugin shells out to an external Mermaid CLI. Install one of these and make sure the executable is on your `PATH`.
 
-`bm` is the recommended backend. `termaid` is a Python renderer with broad diagram support and a pipe-friendly CLI, while
-`mermaid-ascii` is useful as a lightweight fallback when you only need its supported subset.
+`selkie` is the default backend — a native Rust renderer with the fastest renders and the broadest diagrammatic
+character-art coverage. `bm` is a high-quality Node.js renderer (slower per render, narrower coverage), `termaid` is a
+Python renderer with broad support and a pipe-friendly CLI, and `mermaid-ascii` is a lightweight fallback. `merman-cli`
+is an opt-in backend for window-width fitting.
 
-### Preferred: `bm`
+Approximate warm-render cost on a small mixed corpus: `selkie` ~2 ms, `mermaid-ascii` ~4 ms, `merman-cli` ~4 ms,
+`termaid` ~50 ms, `bm` ~120 ms (Node.js startup dominates).
+
+### Default: `selkie`
+
+[`selkie`](https://github.com/btucker/selkie) is a native Rust implementation of Mermaid with the fastest renders and
+the broadest diagrammatic character-art coverage of the supported backends (circular pies, radar, treemap, sankey,
+kanban, ...). It always draws with Unicode box-drawing characters (no plain-ASCII mode) and has no padding flags, so
+`mode` and `cli` padding do not apply to it, and it is under active development.
+
+```bash
+cargo install selkie-rs
+```
+
+### Alternative: `bm`
 
 `bm` is provided by [`beautiful-mermaid-cli`](https://www.npmjs.com/package/beautiful-mermaid-cli), which uses the
 [`beautiful-mermaid`](https://github.com/lukilabs/beautiful-mermaid) renderer.
@@ -54,7 +70,41 @@ npm i -g mermaid-ascii
 brew install cavanaug/tap-extras/mermaid-ascii
 ```
 
-After installing either renderer, restart Neovim or ensure your shell `PATH` is visible to Neovim, then run:
+#### pgavlin's fork (broader coverage)
+
+[`pgavlin/mermaid-ascii`](https://github.com/pgavlin/mermaid-ascii) is a drop-in Go fork with the same `mermaid-ascii`
+binary name and flags — the plugin uses it unchanged — but it renders many more diagram types (pie, gantt, mindmap,
+timeline, git graph, and more) in a few milliseconds:
+
+```bash
+go install github.com/pgavlin/mermaid-ascii@latest
+```
+
+Caveat: the fork currently drops `A -- text --> B` edge labels along with the nodes they point to, while still exiting
+with code 0. Write those edges as `A -->|text| B` while using it.
+
+### Experimental: `merman-cli`
+
+[`merman-cli`](https://github.com/Latias94/merman) is a native Rust Mermaid implementation whose value for Neovim is
+window-width handling: flowcharts and sequence diagrams retry with a compact layout, and anything that still does not
+fit falls back to a structured text report instead of overflowing the window. Opt in with:
+
+```lua
+opts = { cmd = { 'merman-cli' } }
+```
+
+```bash
+cargo binstall merman-cli
+# or: brew install merman-cli
+```
+
+When selected, `width` defaults to `'auto'` (see [Options](#options)). Flowchart, sequence, state, class, ER, and XY
+chart diagrams render as character-art diagrams; gantt, git graph, journey, kanban, mindmap, packet, and timeline
+render as structured text reports; other families (pie, radar, sankey, treemap, ...) have no ASCII output and surface
+the renderer's error. Structured text reports and width fallbacks are prefixed with a notice line so they are clearly
+distinguishable from diagrams.
+
+After installing a renderer, restart Neovim or ensure your shell `PATH` is visible to Neovim, then run:
 
 ```vim
 :checkhealth render-markdown-mermaid
@@ -121,7 +171,8 @@ flowchart TD
     mode = 'unicode', -- default: Unicode box-drawing; use 'ascii' for ASCII fallback
     placement = 'above', -- render above or below the raw mermaid fence while editing
     replace = false, -- visually replace the fence in normal mode when not editing that block
-    cmd = { 'bm' }, -- resolved command; omit cmd to prefer bm, then termaid, then mermaid-ascii
+    cmd = { 'selkie' }, -- resolved command; omit cmd to prefer selkie, then bm, then termaid, then mermaid-ascii
+    width = nil, -- nil | 'auto' | number: window-width fitting (merman-cli; defaults to 'auto' when selected)
     auto_setup_render_markdown = true,
     debounce = 150,
     timeout = 2000,
@@ -147,7 +198,16 @@ entering insert mode reveals the source again and falls back to `placement`.
 `mode` controls whether text renderers use Unicode box-drawing characters (`unicode`) or plain ASCII fallback characters (`ascii`). The
 default is `unicode`.
 
-If you do not set `cmd`, the plugin prefers `bm`, then `termaid`, and falls back to `mermaid-ascii`.
+If you do not set `cmd`, the plugin prefers `selkie`, then `bm`, then `termaid`, and falls back to `mermaid-ascii`.
+When `mode = 'ascii'` is set, an ASCII-capable backend (`bm`, then `termaid`, then `mermaid-ascii`) is preferred
+instead, since `selkie` always renders with Unicode box-drawing characters.
+
+`width` enables window-width fitting for renderers that support it (currently `merman-cli`). `'auto'` uses the width of
+the window showing the buffer minus the sign/number columns; a number fixes the column budget. When `cmd` is
+`merman-cli`, `width` defaults to `'auto'`: flowcharts and sequences retry a compact layout, and diagrams that still
+exceed the width fall back to a structured text report. Structured text output and fallback reports are prefixed with a
+notice line (highlighted with `RenderMarkdownMermaidNotice`, text configurable via `ui.report` and `ui.fallback`) so
+they are distinguishable from diagrams. Set `width = false` to opt out of width fitting while using `merman-cli`.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
 
@@ -162,9 +222,11 @@ Run:
 This checks for:
 
 - `render-markdown.nvim`
+- `selkie`
 - `bm`
 - `termaid`
 - `mermaid-ascii`
+- `merman-cli` (opt-in renderer)
 - which renderer will be selected by default
 - treesitter parsers for `markdown` and `markdown_inline`
 - a modern enough Neovim / treesitter runtime

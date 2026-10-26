@@ -33,6 +33,7 @@ function M.setup(opts)
 
     vim.api.nvim_set_hl(0, 'RenderMarkdownMermaidPending', { link = 'DiagnosticInfo' })
     vim.api.nvim_set_hl(0, 'RenderMarkdownMermaidError', { link = 'DiagnosticWarn' })
+    vim.api.nvim_set_hl(0, 'RenderMarkdownMermaidNotice', { link = 'DiagnosticHint' })
 
     local group = vim.api.nvim_create_augroup('RenderMarkdownMermaid', { clear = true })
     vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWinEnter', 'TextChanged', 'TextChangedI', 'InsertEnter', 'InsertLeave', 'CursorMoved', 'CursorMovedI' }, {

@@ -45,6 +45,30 @@ local function in_insert_mode()
     return mode:match('^[iR]') ~= nil
 end
 
+local function window_width(buf)
+    local win = vim.fn.win_findbuf(buf)[1]
+    if not win then
+        return nil
+    end
+    local info = vim.fn.getwininfo(win)
+    local textoff = info and info[1] and info[1].textoff or 0
+    return math.max(vim.api.nvim_win_get_width(win) - textoff, 20)
+end
+
+---Resolve the configured render width for renderers that accept one.
+---@param config table
+---@param buf integer
+---@return integer?
+local function resolve_width(config, buf)
+    if config.width == nil then
+        return nil
+    end
+    if config.width ~= 'auto' then
+        return config.width
+    end
+    return window_width(buf)
+end
+
 local function cursor_inside_block(row, start_row, end_row)
     return row and row >= start_row and row < end_row
 end
@@ -58,12 +82,13 @@ local function node_text(node, buf)
     return vim.trim(table.concat(vim.api.nvim_buf_get_lines(buf, start_row, end_row, false), '\n'))
 end
 
-local function key_for(source, config)
+local function key_for(source, config, width)
     return util.hash(vim.json.encode({
         source = source,
         cmd = config.cmd,
         mode = config.mode,
         cli = config.cli,
+        width = width,
     }))
 end
 
@@ -80,9 +105,14 @@ local function preview_anchor(config, start_row, end_row, replacing)
     return start_row, true
 end
 
-local function render_preview(buf, row, lines, above)
+local function render_preview(buf, row, lines, above, notice)
+    local virt_lines = {}
+    if notice and notice ~= '' then
+        virt_lines[#virt_lines + 1] = { { notice, 'RenderMarkdownMermaidNotice' } }
+    end
+    vim.list_extend(virt_lines, util.to_virt_lines(lines))
     vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
-        virt_lines = util.to_virt_lines(lines),
+        virt_lines = virt_lines,
         virt_lines_above = above,
         priority = 200,
         strict = false,
@@ -155,6 +185,7 @@ function M.render(buf, config)
     vim.api.nvim_buf_clear_namespace(buf, M.ns, 0, -1)
     local row = current_row(buf)
     local editing = in_insert_mode()
+    local width = resolve_width(config, buf)
 
     for _, block in ipairs(blocks(buf)) do
         local start_row, _, end_row = block.code:range()
@@ -162,7 +193,7 @@ function M.render(buf, config)
         if line_count <= config.max_block_lines then
             local source = node_text(block.content, buf)
             if source ~= '' then
-                local key = key_for(source, config)
+                local key = key_for(source, config, width)
                 local entry = config.cache and cache.get(key) or nil
                 local cursor_inside = cursor_inside_block(row, start_row, end_row)
                 local replacing = config.replace and not editing and not cursor_inside
@@ -176,18 +207,18 @@ function M.render(buf, config)
                 local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing)
 
                 if entry and entry.status == 'done' then
-                    render_preview(buf, preview_row, entry.lines, preview_above)
+                    render_preview(buf, preview_row, entry.lines, preview_above, entry.notice)
                 elseif entry and entry.status == 'error' then
                     render_message(buf, preview_row, config.ui.error, 'RenderMarkdownMermaidError', preview_above)
                 else
                     if not entry then
                         cache.set(key, { status = 'pending' })
-                        renderer.render(config, source, function(result)
+                        renderer.render(config, source, width, function(result)
                             if not vim.api.nvim_buf_is_valid(buf) then
                                 return
                             end
                             if result.ok then
-                                cache.set(key, { status = 'done', lines = result.output })
+                                cache.set(key, { status = 'done', lines = result.output, notice = result.notice })
                             else
                                 cache.set(key, { status = 'error', error = result.error })
                             end

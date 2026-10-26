@@ -11,11 +11,13 @@ end
 
 ---@param command string
 ---@param available boolean
-local function report_renderer(command, available)
+---@param note string?
+local function report_renderer(command, available, note)
+    local suffix = note and (' (%s)'):format(note) or ''
     if available then
-        vim.health.ok(('%s is available in PATH'):format(command))
+        vim.health.ok(('%s is available in PATH%s'):format(command, suffix))
     else
-        vim.health.info(('%s is not available in PATH'):format(command))
+        vim.health.info(('%s is not available in PATH%s'):format(command, suffix))
     end
 end
 
@@ -32,8 +34,8 @@ function M.check()
     local ok, render_markdown = pcall(require, 'render-markdown')
     local config_ok, mermaid = pcall(require, 'render-markdown-mermaid')
     local config = config_ok and mermaid and mermaid.config or nil
-    local available = config_mod.available_default_renderers()
-    local default_command = config_mod.resolve_cmd(nil, available)[1]
+    local available = config_mod.available_renderers()
+    local default_command = config_mod.resolve_cmd(nil, available, config and config.mode or nil)[1]
     local configured_command = config and config.cmd or nil
     local cmd_source = config and config._cmd_source or 'auto'
 
@@ -48,21 +50,28 @@ function M.check()
         })
     end
 
+    report_renderer('selkie', available['selkie'])
     report_renderer('bm', available['bm'])
     report_renderer('termaid', available['termaid'])
     report_renderer('mermaid-ascii', available['mermaid-ascii'])
+    report_renderer('merman-cli', available['merman-cli'], 'opt-in via cmd = { "merman-cli" }; window-width fitting')
 
     if available[default_command] then
         vim.health.ok(('Default renderer priority selects: %s'):format(default_command))
     else
         vim.health.error('No supported renderer executable is available in PATH', {
-            'Install Beautiful Mermaid (bm, preferred), termaid, or mermaid-ascii, or configure setup({ cmd = { ... } }).',
-            'The default renderer selection prefers bm, then termaid, and falls back to mermaid-ascii.',
+            'Install selkie (preferred), bm, termaid, or mermaid-ascii, or configure setup({ cmd = { ... } }).',
+            'The default renderer selection prefers selkie, then bm, then termaid, and falls back to mermaid-ascii.',
+            'merman-cli is also supported as an explicit cmd override.',
         })
     end
 
     if cmd_source == 'user' then
         vim.health.info(('Configured renderer override: %s'):format(command_string(configured_command)))
+        if config and config.width ~= nil then
+            local width = config.width == 'auto' and 'auto (window width)' or tostring(config.width)
+            vim.health.info(('Width fitting: %s'):format(width))
+        end
     end
 
     vim.health.start('render-markdown-mermaid.nvim [runtime]')

@@ -1,5 +1,9 @@
 local M = {}
-local DEFAULT_RENDERERS = { 'bm', 'termaid', 'mermaid-ascii' }
+local DEFAULT_RENDERERS = { 'selkie', 'bm', 'termaid', 'mermaid-ascii' }
+-- selkie always draws with Unicode box-drawing characters; when the user
+-- explicitly requests plain-ASCII output, prefer backends that honor it.
+local ASCII_RENDERERS = { 'bm', 'termaid', 'mermaid-ascii', 'selkie' }
+local ALL_RENDERERS = { 'selkie', 'bm', 'termaid', 'mermaid-ascii', 'merman-cli' }
 local VALID_MODES = {
     unicode = true,
     ascii = true,
@@ -14,9 +18,9 @@ local function has_executable(command)
 end
 
 ---@return table<string, boolean>
-function M.available_default_renderers()
+function M.available_renderers()
     local available = {}
-    for _, command in ipairs(DEFAULT_RENDERERS) do
+    for _, command in ipairs(ALL_RENDERERS) do
         available[command] = has_executable(command)
     end
     return available
@@ -24,13 +28,15 @@ end
 
 ---@param cmd? string[]
 ---@param available? table<string, boolean>
+---@param mode? string
 ---@return string[]
-function M.resolve_cmd(cmd, available)
+function M.resolve_cmd(cmd, available, mode)
     if cmd and cmd[1] then
         return vim.deepcopy(cmd)
     end
-    available = available or M.available_default_renderers()
-    for _, command in ipairs(DEFAULT_RENDERERS) do
+    available = available or M.available_renderers()
+    local renderers = mode == 'ascii' and ASCII_RENDERERS or DEFAULT_RENDERERS
+    for _, command in ipairs(renderers) do
         if available[command] then
             return { command }
         end
@@ -38,11 +44,28 @@ function M.resolve_cmd(cmd, available)
     return { DEFAULT_RENDERERS[1] }
 end
 
+---Normalize the configured render width. Only renderers that accept a width
+---limit (merman-cli) consume it; nil disables width handling entirely.
+---@param width any
+---@return integer|'auto'|nil
+function M.resolve_width(width)
+    if width == nil or width == false then
+        return nil
+    end
+    if width == 'auto' then
+        return 'auto'
+    end
+    if type(width) == 'number' then
+        return math.max(math.floor(width), 20)
+    end
+    return nil
+end
+
 M.default = {
     mode = 'unicode',
     placement = 'above',
     replace = false,
-    cmd = { 'bm' },
+    cmd = { 'selkie' },
     auto_setup_render_markdown = true,
     debounce = 150,
     timeout = 2000,
@@ -60,6 +83,8 @@ M.default = {
     ui = {
         pending = '󱎫 Mermaid rendering...',
         error = '󱂅 Mermaid render failed',
+        report = '󰛈 Structured text report (not a diagram)',
+        fallback = '󰛈 Diagram too wide; structured text fallback',
     },
 }
 
@@ -88,7 +113,19 @@ function M.merge(opts)
     local has_user_cmd = opts and opts.cmd and opts.cmd[1]
     merged._cmd_source = has_user_cmd and 'user' or 'auto'
     if merged._cmd_source == 'auto' or not merged.cmd or not merged.cmd[1] then
-        merged.cmd = M.resolve_cmd(nil)
+        merged.cmd = M.resolve_cmd(nil, nil, merged.mode)
+    end
+
+    local user_width = nil
+    if opts and opts.width ~= nil then
+        user_width = opts.width
+    end
+    merged.width = M.resolve_width(merged.width)
+    -- merman-cli is the only renderer that consumes a width limit; default it
+    -- to the live window width so its compact/overflow contracts engage. An
+    -- explicit `width = false` opts out of width fitting entirely.
+    if merged.width == nil and user_width == nil and vim.fs.basename(merged.cmd[1] or '') == 'merman-cli' then
+        merged.width = 'auto'
     end
     return merged
 end

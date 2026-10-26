@@ -7,9 +7,9 @@ A Neovim plugin (`render-markdown-mermaid.nvim`) that renders fenced `mermaid` c
 ## Key architecture
 
 - **Entrypoint**: `lua/render-markdown-mermaid/init.lua` — `M.setup(opts)` is the only public API. Users call it via lazy.nvim `opts = {}`. The plugin guard in `plugin/render-markdown-mermaid.lua` does NOT call setup.
-- **Rendering pipeline**: `display.lua` (treesitter query → cache check → async `vim.system()` call) → `renderer.lua` (builds CLI args for `bm`, `termaid`, or `mermaid-ascii`) → result placed as extmark virtual lines.
-- **Cache**: `cache.lua` keys on `sha256(json({source, cmd, mode, cli}))`.
-- **Config resolution**: `config.lua` — `cmd` auto-resolves to first available of `['bm', 'termaid', 'mermaid-ascii']`; `mode` defaults to `'unicode'`; `placement` defaults to `'above'`.
+- **Rendering pipeline**: `display.lua` (treesitter query → cache check → async `vim.system()` call) → `renderer.lua` (builds CLI args for `bm`, `termaid`, `mermaid-ascii` (upstream or pgavlin's fork), `selkie`, or `merman-cli`) → result placed as extmark virtual lines.
+- **Cache**: `cache.lua` keys on `sha256(json({source, cmd, mode, cli, width}))`.
+- **Config resolution**: `config.lua` — `cmd` auto-resolves to first available of `['selkie', 'bm', 'termaid', 'mermaid-ascii']` (`mode = 'ascii'` prefers ASCII-capable backends: `bm`, `termaid`, `mermaid-ascii`); `merman-cli` is opt-in via `cmd` and never auto-selected; `mode` defaults to `'unicode'`; `placement` defaults to `'above'`; `width` defaults to `'auto'` when `merman-cli` is selected (window-width fitting, and the only renderer that consumes it).
 
 ## No tooling currently present
 
