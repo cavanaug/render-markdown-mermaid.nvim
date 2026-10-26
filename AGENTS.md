@@ -20,6 +20,8 @@ Run `nvim --headless -u NONE -l tests/scroll_spec.lua` for native cursor motions
 
 Layout tests: `nvim --headless -u NONE -l tests/preview_height_spec.lua` (percentage validation, resizing, split limits) and `nvim --headless -u NONE -l tests/center_spec.lua` (Unicode/gutters, alignment, overflow, and unpadded focus text).
 
+For background regressions, run `nvim -u NONE -c 'luafile tests/background_spec.lua'` in a real terminal (or agent-terminal). It checks screen attributes through the right edge for centered/left-aligned, focused, empty-row, and split-window output. `MERMAID_TEST_RESULT` optionally writes a JSON verdict for automation.
+
 ## Smoke test
 
 Open `samples/tall.md` or `samples/sequence_diagrams.md` in Neovim. For scrolling, place the cursor on the tall fence, press Enter, navigate, and exit with `q`/`Esc`. Run `:checkhealth render-markdown-mermaid` to verify dependencies.

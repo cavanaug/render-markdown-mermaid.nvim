@@ -151,7 +151,14 @@ local function render_preview(buf, row, lines, above, notice, indicator, padding
     local aligned = {}
     local prefix = string.rep(' ', padding)
     for _, line in ipairs(lines) do aligned[#aligned + 1] = prefix .. line end
-    vim.list_extend(virt_lines, util.to_virt_lines(aligned))
+    -- Extmarks are shared between windows: fill the widest text area and let
+    -- Neovim clip excess spaces in narrower splits. Recompute on every redraw.
+    local width = 0
+    for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+        local info = vim.fn.getwininfo(win)[1]
+        width = math.max(width, vim.api.nvim_win_get_width(win) - info.textoff)
+    end
+    vim.list_extend(virt_lines, util.to_virt_lines(aligned, width))
     return vim.api.nvim_buf_set_extmark(buf, M.ns, row, 0, {
         id = id,
         virt_lines = virt_lines,

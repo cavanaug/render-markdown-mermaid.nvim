@@ -226,6 +226,7 @@ inline output, and legacy `'auto'` resolves to the new `'75%'` default. Small di
 padding is applied to every row and based on the widest row of the full diagram, so the layout stays aligned while
 scrolling. The focused view keeps that alignment without adding spaces to the rendered text you copy. Diagrams
 wider than the window remain left-aligned for horizontal scrolling. Set `center = false` for the original left alignment.
+The diagram background extends to the right edge of the text area, including short and empty rows.
 
 1. Place your cursor on the Mermaid source fence or the real line anchoring its inline preview.
 2. Press **Enter** once to put the real cursor inside the rendered diagram. No command is required.
