@@ -169,7 +169,8 @@ local function run()
     keys('<Tab>')
     assert(vim.wait(1000, function() return #held > 1 end, 5), 'test must hold the newly cycled backend')
     hold = false
-    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    -- Distinct from both the saved source cursor and parked preview anchor.
+    vim.api.nvim_win_set_cursor(0, { 1, 1 })
     vim.api.nvim_exec_autocmds('CursorMoved', { buffer = buf })
     equal(vim.wo.scrolloff, 7, 'cancelled viewer re-entry must restore source scrolloff')
     held[#held].callback({ ok = true, output = { 'bm diagram' } })
