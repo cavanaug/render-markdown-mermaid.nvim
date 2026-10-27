@@ -129,7 +129,7 @@ local function key_for(source, config, width)
     }))
 end
 
-local function preview_anchor(config, start_row, end_row, replacing)
+local function preview_anchor(config, start_row, end_row, replacing, total)
     if replacing then
         if start_row > 0 then
             return start_row - 1, false
@@ -137,9 +137,18 @@ local function preview_anchor(config, start_row, end_row, replacing)
         return end_row, true
     end
     if config.placement == 'below' then
+        if end_row >= total then
+            -- At EOF there is no following line. Use the last content line,
+            -- not the closing delimiter that Markdown highlighting can hide.
+            return math.max(start_row + 1, end_row - 2), false
+        end
         return end_row, true
     end
-    return start_row, true
+    -- Markdown highlighting can conceal the opening fence, including virtual
+    -- lines attached to it. Anchor below its preceding line instead. At BOF,
+    -- use the first content line so a concealed delimiter cannot hide output.
+    if start_row > 0 then return start_row - 1, false end
+    return start_row + 1, true
 end
 
 local function render_preview(buf, row, lines, above, notice, indicator, padding, id)
@@ -240,6 +249,7 @@ function M.render(buf, config)
     local row = current_row(buf)
     local editing = in_insert_mode()
     local width = resolve_width(config, buf)
+    local pending = false
 
     for _, block in ipairs(blocks(buf)) do
         local start_row, _, end_row = block.code:range()
@@ -258,22 +268,17 @@ function M.render(buf, config)
                     conceal_source(buf, start_row, end_row)
                 end
 
-                local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing)
+                local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing, vim.api.nvim_buf_line_count(buf))
 
                 if entry and entry.status == 'done' then
                     local mark = nil
                     local padding = preview_padding(config, buf, entry.lines)
-                    local focus_row = config.placement == 'below' and end_row - 1 or start_row
-                    local focus_above = config.placement ~= 'below'
-                    if replacing then
-                        focus_row, focus_above = preview_row, preview_above
-                    end
                     scroll.show(buf, {
                         start_row = start_row,
                         end_row = end_row,
                         key = key,
-                        above = focus_above,
-                        anchor_row = focus_row,
+                        above = preview_above,
+                        anchor_row = preview_row,
                         preview_row = preview_row,
                         focus_key = config.focus_key,
                         notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
@@ -292,6 +297,7 @@ function M.render(buf, config)
                 elseif entry and entry.status == 'error' then
                     render_message(buf, preview_row, config.ui.error, 'RenderMarkdownMermaidError', preview_above)
                 else
+                    pending = true
                     if not entry then
                         cache.set(key, { status = 'pending' })
                         renderer.render(config, source, width, function(result)
@@ -316,7 +322,7 @@ function M.render(buf, config)
             end
         end
     end
-    scroll.finish(buf)
+    scroll.finish(buf, pending)
 end
 
 function M.schedule(buf, config, delay)

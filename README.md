@@ -20,7 +20,10 @@ Python renderer with broad support and a pipe-friendly CLI, and `mermaid-ascii` 
 is an opt-in backend for window-width fitting.
 
 Approximate warm-render cost on a small mixed corpus: `selkie` ~2 ms, `mermaid-ascii` ~4 ms, `merman-cli` ~4 ms,
-`termaid` ~50 ms, `bm` ~120 ms (Node.js startup dominates).
+`termaid` ~50 ms, `bm` ~120 ms (per-process timings, including runtime startup).
+
+See the [renderer comparison](docs/renderer-comparison.md) for the original benchmark results, methodology,
+capability differences, output-size tradeoffs, and correctness caveats.
 
 ### Default: `selkie`
 
@@ -79,6 +82,10 @@ timeline, git graph, and more) in a few milliseconds:
 ```bash
 go install github.com/pgavlin/mermaid-ascii@latest
 ```
+
+Both implementations appear as a single `mermaid-ascii` entry when cycling; the plugin uses whichever
+executable Neovim finds in `PATH`. If that entry is skipped, check `:echo exepath('mermaid-ascii')`.
+An empty result means Neovim cannot find it, even if a copy was built elsewhere.
 
 Caveat: the fork currently drops `A -- text --> B` edge labels along with the nodes they point to, while still exiting
 with code 0. Write those edges as `A -->|text| B` while using it.

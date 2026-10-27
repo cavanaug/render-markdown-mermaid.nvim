@@ -5,6 +5,14 @@ local buffers = {}
 local focus = nil
 local pending_focus = nil
 
+local function clear_pending()
+    local previous = pending_focus
+    pending_focus = nil
+    if previous and vim.api.nvim_win_is_valid(previous.win) then
+        vim.api.nvim_set_option_value('scrolloff', previous.source_scrolloff, { win = previous.win, scope = 'local' })
+    end
+end
+
 local function pending_is_current()
     return pending_focus and vim.api.nvim_win_is_valid(pending_focus.win)
         and vim.api.nvim_buf_is_valid(pending_focus.buf)
@@ -62,6 +70,9 @@ function M.blur(restore_view)
     previous.entry.height = previous.entry.limit
     if vim.api.nvim_buf_is_valid(previous.source_buf) then
         paint(previous.entry)
+    end
+    if vim.api.nvim_win_is_valid(previous.source_win) then
+        vim.api.nvim_set_option_value('scrolloff', previous.source_scrolloff, { win = previous.source_win, scope = 'local' })
     end
     if restore_view and vim.api.nvim_win_is_valid(previous.source_win)
         and vim.api.nvim_win_get_buf(previous.source_win) == previous.source_buf then
@@ -158,7 +169,7 @@ function M.show(buf, block, lines, height, draw)
     end
 end
 
-function M.finish(buf)
+function M.finish(buf, pending)
     local state = buffers[buf]
     for row, entry in pairs(state.entries) do
         if not state.seen[row] then
@@ -168,10 +179,13 @@ function M.finish(buf)
     end
     if pending_focus and pending_focus.buf == buf then
         if not pending_is_current() then
-            pending_focus = nil
+            clear_pending()
         elseif M.can_focus(buf) then
-            pending_focus = nil
             M.focus(buf)
+        elseif not pending then
+            -- Rendering failed or the target fence disappeared. Do not keep
+            -- temporary source-window options while waiting for no request.
+            clear_pending()
         end
     end
 end
@@ -179,9 +193,9 @@ end
 ---Release an old renderer's viewer and reopen it once fresh output is ready,
 ---unless the user moves elsewhere while the asynchronous render is running.
 function M.refresh()
+    clear_pending()
     local previous = focus
     M.blur(true)
-    pending_focus = nil
     if previous and vim.api.nvim_win_is_valid(previous.source_win)
         and vim.api.nvim_buf_is_valid(previous.source_buf) then
         pending_focus = {
@@ -189,7 +203,12 @@ function M.refresh()
             buf = previous.source_buf,
             tick = vim.api.nvim_buf_get_changedtick(previous.source_buf),
             cursor = vim.api.nvim_win_get_cursor(previous.source_win),
+            source_scrolloff = previous.source_scrolloff,
         }
+        -- Keep the source cursor stable while changing virtual-line heights.
+        -- Restoring its margin during the wait can move it out of a concealed
+        -- fence and spuriously cancel re-entry before the user has moved.
+        vim.api.nvim_set_option_value('scrolloff', 0, { win = previous.source_win, scope = 'local' })
     end
 end
 
@@ -214,7 +233,7 @@ end
 ---Focus a real read-only buffer over the rendered fence under the cursor.
 ---Exit/cycle keys are local; movement uses Neovim's ordinary buffer behavior.
 function M.focus(buf)
-    pending_focus = nil
+    clear_pending()
     if focus then
         if focus.win and vim.api.nvim_win_is_valid(focus.win) then
             M.blur(true)
@@ -234,10 +253,14 @@ function M.focus(buf)
         source_buf = buf,
         source_win = source,
         source_view = vim.fn.winsaveview(),
+        source_scrolloff = vim.api.nvim_get_option_value('scrolloff', { win = source, scope = 'local' }),
         entry = entry,
         busy = true,
     }
     focus = state_focus
+    -- The source cursor is parked at the preview anchor, not being navigated.
+    -- A source scrolloff margin can push its virtual preview off screen.
+    vim.api.nvim_set_option_value('scrolloff', 0, { win = source, scope = 'local' })
     entry.height = focused_height(entry, source)
     local anchor = math.min(entry.anchor_row + 1, vim.api.nvim_buf_line_count(buf))
     vim.api.nvim_win_set_cursor(source, { anchor, 0 })
@@ -285,7 +308,7 @@ end
 ---Mirror the real window's visible range back to the inline preview. This
 ---observes native motions; it does not implement or remap them.
 function M.check()
-    if pending_focus and not pending_is_current() then pending_focus = nil end
+    if pending_focus and not pending_is_current() then clear_pending() end
     if not focus or focus.busy then return end
     if not vim.api.nvim_win_is_valid(focus.source_win)
         or not vim.api.nvim_buf_is_valid(focus.source_buf)
@@ -304,7 +327,7 @@ function M.changed(buf)
 end
 
 function M.clear(buf)
-    if pending_focus and (not buf or pending_focus.buf == buf) then pending_focus = nil end
+    if pending_focus and (not buf or pending_focus.buf == buf) then clear_pending() end
     if focus and (not buf or focus.source_buf == buf) then M.blur() end
     if buf then
         buffers[buf] = nil

@@ -44,6 +44,7 @@ end
 
 local function run()
     local buf = vim.api.nvim_get_current_buf()
+    vim.wo.scrolloff = 7
     vim.bo[buf].filetype = 'markdown'
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { '# Test', '```mermaid', 'graph TD', 'A --> B', '```' })
     vim.api.nvim_win_set_cursor(0, { 3, 0 })
@@ -71,6 +72,19 @@ local function run()
     equal(plugin.config.cmd, { 'selkie' }, 'forward cycle must wrap around')
     equal(plugin.config.width, nil, 'Merman automatic width must not leak into other backends')
     wait_for(buf, 'selkie')
+
+    -- Visit every backend explicitly, including mermaid-ascii between
+    -- termaid and Merman, in both directions.
+    for _, name in ipairs({ 'bm', 'termaid', 'mermaid-ascii', 'merman-cli', 'selkie' }) do
+        vim.cmd('MermaidCycle')
+        equal(plugin.config.cmd, { name }, 'forward cycle must include every installed backend')
+        wait_for(buf, name)
+    end
+    for _, name in ipairs({ 'merman-cli', 'mermaid-ascii', 'termaid', 'bm', 'selkie' }) do
+        vim.cmd('MermaidCycle!')
+        equal(plugin.config.cmd, { name }, 'reverse cycle must include every installed backend')
+        wait_for(buf, name)
+    end
 
     available = { selkie = true, termaid = true }
     vim.cmd('MermaidCycle')
@@ -157,6 +171,7 @@ local function run()
     hold = false
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
     vim.api.nvim_exec_autocmds('CursorMoved', { buffer = buf })
+    equal(vim.wo.scrolloff, 7, 'cancelled viewer re-entry must restore source scrolloff')
     held[#held].callback({ ok = true, output = { 'bm diagram' } })
     wait_for(buf, 'bm')
     equal(vim.api.nvim_get_current_buf(), buf, 'a delayed backend result must not steal focus after the user moves')
