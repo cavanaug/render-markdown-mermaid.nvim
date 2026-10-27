@@ -171,9 +171,11 @@ false to disable the shortcut and restore the original mapping. For example:
 SWITCHING RENDERERS                                         *:MermaidCycle*
 
 While navigating a diagram, Tab cycles to the next installed renderer and
-Shift-Tab cycles backwards. The new output reopens for native Vim navigation;
-the header identifies its renderer. Tab in the source buffer is unchanged.
-Moving away during rendering cancels automatic re-entry into the viewer.
+Shift-Tab cycles backwards. The same viewer keeps its previous output until
+the new result is ready, then replaces it in place. Other inline previews
+also retain their output while rendering. The header identifies the output
+currently shown. Tab works while rendering; leaving the viewer prevents a
+late result from reopening it. Tab in the source buffer is unchanged.
 
 `:MermaidCycle` works from any buffer. Use `:MermaidCycle!` for the previous
 renderer. The order is selkie, bm, termaid, mermaid-ascii, merman-cli, then

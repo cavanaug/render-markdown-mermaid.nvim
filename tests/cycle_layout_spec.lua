@@ -32,7 +32,7 @@ end
 local function run()
     vim.opt.number = true
     vim.opt.scrolloff = tonumber(vim.env.MERMAID_TEST_SCROLLOFF) or 0
-    local sample = vim.fn.readfile('samples/sequence_diagrams.md')
+    local sample = vim.fn.readfile('tests/fixtures/sequence_diagrams.md')
     for _, options in ipairs({ {}, { placement = 'below' }, { replace = true }, { hide_source = true } }) do
         for _, target in ipairs({ { 4, 'first' }, { 12, 'second' }, { 22, 'third' }, { 30, 'fourth' } }) do
             local buf = vim.api.nvim_create_buf(true, false)
@@ -94,10 +94,20 @@ local function run()
             settle()
             check('initial ' .. target[2] .. vim.inspect(options))
             for _, engine in ipairs({ 'bm', 'termaid', 'selkie' }) do
+                local viewer = vim.api.nvim_get_current_win()
+                local before = {}
+                for row = 1, vim.o.lines - 2 do before[row] = screenline(row) end
                 vim.cmd('MermaidCycle')
                 settle()
-                -- Reopen the target before the other diagrams finish so their
-                -- changing heights exercise full-buffer redraws while focused.
+                assert(vim.api.nvim_get_current_win() == viewer, 'switching must retain the viewer window')
+                if engine ~= 'selkie' then
+                    for row, text in ipairs(before) do
+                        assert(screenline(row) == text, engine .. ' pending ' .. target[2] .. vim.inspect(options)
+                            .. ' must not change screen row ' .. row .. '\nbefore: ' .. text .. '\nafter: ' .. screenline(row))
+                    end
+                end
+                -- Finish the target before other diagrams to exercise their
+                -- changing heights behind the same continuously focused viewer.
                 deliver(target[2])
                 check(engine .. ' target ready ' .. target[2] .. vim.inspect(options))
                 deliver()

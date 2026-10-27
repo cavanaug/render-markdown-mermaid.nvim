@@ -18,10 +18,11 @@ local function keys(input)
 end
 local function run()
     local buf = vim.api.nvim_get_current_buf()
+    local source_win = vim.api.nvim_get_current_win()
     vim.bo[buf].filetype = 'markdown'
     vim.wo.conceallevel = 2
     vim.wo.concealcursor = 'nc'
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.fn.readfile('samples/sequence_diagrams.md'))
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.fn.readfile('tests/fixtures/sequence_diagrams.md'))
     vim.api.nvim_win_set_cursor(0, { 4, 5 })
     vim.treesitter.start(buf, 'markdown')
     plugin.setup({ auto_setup_render_markdown = false, debounce = 0, replace = true })
@@ -31,15 +32,18 @@ local function run()
     vim.wo.scrolloff = 8
     keys('<CR>')
     assert(vim.wait(1000, function() return vim.api.nvim_get_current_buf() ~= buf end, 5), 'Enter must open viewer')
+    local viewer = vim.api.nvim_get_current_buf()
     for round = 1, 4 do
         for _, name in ipairs({ 'bm', 'termaid', 'selkie' }) do
             keys('<Tab>')
             assert(plugin.config.cmd[1] == name, 'Tab must select ' .. name .. ' on round ' .. round)
             if round == 1 then
-                assert(vim.api.nvim_get_current_buf() == buf, 'test must restore the anchor while rendering is pending')
-                -- A queued view restoration can park the source cursor back
-                -- at its preview anchor after cycling restored the user view.
-                vim.api.nvim_win_set_cursor(0, { 2, 0 })
+                assert(vim.api.nvim_get_current_buf() == viewer, 'cycling must retain the viewer while pending')
+                -- Queued source-view callbacks must not affect the active
+                -- diagram, even when they alternate between known positions.
+                vim.api.nvim_win_set_cursor(source_win, { 4, 5 })
+                vim.api.nvim_exec_autocmds('CursorMoved', { buffer = buf })
+                vim.api.nvim_win_set_cursor(source_win, { 2, 0 })
                 vim.api.nvim_exec_autocmds('CursorMoved', { buffer = buf })
             end
             assert(vim.wait(1000, function()
@@ -59,6 +63,7 @@ local function run()
     -- inside the first fence. Re-entry must use fence identity, not lookup.
     local adjacent = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_set_current_buf(adjacent)
+    local adjacent_win = vim.api.nvim_get_current_win()
     vim.bo[adjacent].filetype = 'markdown'
     vim.wo.scrolloff = 0
     vim.wo.conceallevel = 0
@@ -70,10 +75,11 @@ local function run()
     plugin.setup({ auto_setup_render_markdown = false, debounce = 0, cmd = { 'selkie' } })
     assert(vim.wait(1000, function() return scroll.can_focus(adjacent) end, 5), 'adjacent target must render')
     keys('<CR>')
+    local adjacent_viewer = vim.api.nvim_get_current_buf()
     assert(vim.api.nvim_get_current_line():find('target', 1, true), 'test must focus the second fence')
     keys('<Tab>')
-    assert(vim.api.nvim_get_current_buf() == adjacent, 'adjacent render must still be pending')
-    vim.api.nvim_win_set_cursor(0, { 4, 0 })
+    assert(vim.api.nvim_get_current_buf() == adjacent_viewer, 'adjacent render must keep its viewer while pending')
+    vim.api.nvim_win_set_cursor(adjacent_win, { 4, 0 })
     vim.api.nvim_exec_autocmds('CursorMoved', { buffer = adjacent })
     assert(vim.wait(1000, function()
         return vim.api.nvim_get_current_buf() ~= adjacent and vim.api.nvim_get_current_line():find('bm', 1, true)

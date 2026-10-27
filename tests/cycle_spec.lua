@@ -44,6 +44,7 @@ end
 
 local function run()
     local buf = vim.api.nvim_get_current_buf()
+    local source_win = vim.api.nvim_get_current_win()
     vim.wo.scrolloff = 7
     vim.bo[buf].filetype = 'markdown'
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { '# Test', '```mermaid', 'graph TD', 'A --> B', '```' })
@@ -100,7 +101,8 @@ local function run()
     local viewer = vim.api.nvim_get_current_buf()
     keys('<Tab>')
     equal(plugin.config.cmd, { 'selkie' }, 'Tab inside the diagram must cycle forwards')
-    equal(vim.api.nvim_buf_is_valid(viewer), false, 'cycling must close the old renderer viewer')
+    equal(vim.api.nvim_buf_is_valid(viewer), true, 'cycling must keep the existing viewer')
+    equal(vim.api.nvim_get_current_buf(), viewer, 'cycling must update the viewer in place')
     wait_for(buf, 'selkie')
     assert(vim.wait(1000, function() return vim.api.nvim_get_current_buf() ~= buf end, 5),
         'cycling must restore diagram navigation when the new output arrives')
@@ -159,7 +161,7 @@ local function run()
     vim.cmd('MermaidCycle!')
     wait_for(buf, 'selkie')
 
-    -- Moving away during a slow backend switch must cancel automatic re-entry.
+    -- Leaving during a slow backend switch must not reopen the viewer later.
     vim.api.nvim_win_set_cursor(0, { 3, 0 })
     vim.cmd('MermaidFocus')
     hold = true
@@ -169,7 +171,7 @@ local function run()
     keys('<Tab>')
     assert(vim.wait(1000, function() return #held > 1 end, 5), 'test must hold the newly cycled backend')
     hold = false
-    -- Distinct from both the saved source cursor and parked preview anchor.
+    vim.api.nvim_set_current_win(source_win)
     vim.api.nvim_win_set_cursor(0, { 1, 1 })
     vim.api.nvim_exec_autocmds('CursorMoved', { buffer = buf })
     equal(vim.wo.scrolloff, 7, 'cancelled viewer re-entry must restore source scrolloff')

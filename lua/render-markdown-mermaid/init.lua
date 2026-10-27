@@ -25,7 +25,6 @@ local function cycle_renderer(backwards)
         return
     end
 
-    scroll.refresh()
     local options = vim.deepcopy(M.config)
     options.cmd = vim.deepcopy(configured_commands[selected] or { selected })
     options.width = configured_width

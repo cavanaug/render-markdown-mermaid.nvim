@@ -36,6 +36,8 @@ local function is_supported(buf)
 end
 
 local function current_row(buf)
+    local focused = scroll.source_row(buf)
+    if focused ~= nil then return focused end
     local current = vim.api.nvim_get_current_win()
     if vim.api.nvim_win_get_buf(current) == buf then
         return vim.api.nvim_win_get_cursor(current)[1] - 1
@@ -237,6 +239,31 @@ local function blocks(buf)
     return result
 end
 
+local function show_preview(buf, config, start_row, end_row, row, above, entry, key, name)
+    local mark = nil
+    local padding = preview_padding(config, buf, entry.lines)
+    scroll.show(buf, {
+        start_row = start_row,
+        end_row = end_row,
+        key = key,
+        above = above,
+        anchor_row = row,
+        preview_row = row,
+        focus_key = config.focus_key,
+        notice = entry.notice,
+        notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
+        padding = padding,
+        renderer = name,
+    }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
+        if vim.api.nvim_buf_is_valid(buf) then
+            -- A full render may already have removed this mark while
+            -- releasing focus on an edited/removed fence.
+            if mark and #vim.api.nvim_buf_get_extmark_by_id(buf, M.ns, mark, {}) == 0 then return end
+            mark = render_preview(buf, row, visible, above, entry.notice, indicator, padding, mark)
+        end
+    end)
+end
+
 function M.render(buf, config)
     if not vim.api.nvim_buf_is_valid(buf) or not is_supported(buf) then
         return
@@ -249,7 +276,6 @@ function M.render(buf, config)
     local row = current_row(buf)
     local editing = in_insert_mode()
     local width = resolve_width(config, buf)
-    local pending = false
 
     for _, block in ipairs(blocks(buf)) do
         local start_row, _, end_row = block.code:range()
@@ -271,33 +297,11 @@ function M.render(buf, config)
                 local preview_row, preview_above = preview_anchor(config, start_row, end_row, replacing, vim.api.nvim_buf_line_count(buf))
 
                 if entry and entry.status == 'done' then
-                    local mark = nil
-                    local padding = preview_padding(config, buf, entry.lines)
-                    scroll.show(buf, {
-                        start_row = start_row,
-                        end_row = end_row,
-                        key = key,
-                        above = preview_above,
-                        anchor_row = preview_row,
-                        preview_row = preview_row,
-                        focus_key = config.focus_key,
-                        notice_lines = entry.notice and entry.notice ~= '' and 1 or 0,
-                        padding = padding,
-                        renderer = config_mod.renderer_name(config.cmd),
-                    }, entry.lines, preview_height(config, buf, #entry.lines), function(visible, indicator)
-                        if vim.api.nvim_buf_is_valid(buf) then
-                            -- A full render may already have removed this mark
-                            -- while releasing focus on an edited/removed fence.
-                            if mark and #vim.api.nvim_buf_get_extmark_by_id(buf, M.ns, mark, {}) == 0 then
-                                return
-                            end
-                            mark = render_preview(buf, preview_row, visible, preview_above, entry.notice, indicator, padding, mark)
-                        end
-                    end)
+                    show_preview(buf, config, start_row, end_row, preview_row, preview_above,
+                        entry, key, config_mod.renderer_name(config.cmd))
                 elseif entry and entry.status == 'error' then
                     render_message(buf, preview_row, config.ui.error, 'RenderMarkdownMermaidError', preview_above)
                 else
-                    pending = true
                     if not entry then
                         cache.set(key, { status = 'pending' })
                         renderer.render(config, source, width, function(result)
@@ -317,12 +321,18 @@ function M.render(buf, config)
                             end)
                         end)
                     end
-                    render_message(buf, preview_row, config.ui.pending, 'RenderMarkdownMermaidPending', preview_above)
+                    local previous = scroll.previous(buf, start_row)
+                    if previous then
+                        show_preview(buf, config, start_row, end_row, preview_row, preview_above,
+                            previous, previous.key, previous.renderer)
+                    else
+                        render_message(buf, preview_row, config.ui.pending, 'RenderMarkdownMermaidPending', preview_above)
+                    end
                 end
             end
         end
     end
-    scroll.finish(buf, pending)
+    scroll.finish(buf)
 end
 
 function M.schedule(buf, config, delay)

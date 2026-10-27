@@ -278,8 +278,10 @@ Try `samples/tall.md` for a scrolling smoke test.
 ## Switching rendering engines
 
 While navigating a diagram, press **Tab** to try the next installed backend or **Shift-Tab** for the previous one.
-The diagram reopens with the new output, and its header shows the selected engine. Your Markdown-source Tab mapping
-is unchanged. Moving elsewhere while a slow backend renders cancels automatic re-entry into diagram navigation.
+The viewer stays open and keeps the previous diagram visible until the new output is ready, then replaces it in place.
+Other inline previews also retain their previous output while rendering. The header identifies the output currently
+shown. Tab works while a backend is still rendering; leaving the viewer prevents a late result from reopening it.
+Your Markdown-source Tab mapping is unchanged.
 
 You can also run `:MermaidCycle` from any buffer; `:MermaidCycle!` cycles backwards. The cycle order is:
 `selkie` → `bm` → `termaid` → `mermaid-ascii` → `merman-cli` → back to `selkie`, skipping missing executables.
