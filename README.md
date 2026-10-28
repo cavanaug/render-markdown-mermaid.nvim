@@ -171,6 +171,9 @@ flowchart TD
 
 ![SmokeTest](./samples/smoke_test.png "SmokeTest")
 
+See the `samples/` directory for more live examples: `tall.md` (scrolling tall diagrams), `sequence_diagrams.md` (multiple
+fences, engine cycling), and `alignment.md` (left-to-right graphs with centering).
+
 ## Options
 
 ```lua
@@ -179,13 +182,13 @@ flowchart TD
     placement = 'above', -- render above or below the raw mermaid fence while editing
     replace = false, -- visually replace the fence in normal mode when not editing that block
     cmd = { 'selkie' }, -- resolved command; omit cmd to prefer selkie, then bm, then termaid, then mermaid-ascii
-    width = nil, -- nil | 'auto' | number: window-width fitting (merman-cli; defaults to 'auto' when selected)
+    width = nil, -- nil | false | 'auto' | number: window-width fitting (merman-cli; defaults to 'auto' when selected)
     auto_setup_render_markdown = true,
-    debounce = 150,
-    timeout = 2000,
-    cache = true,
+    debounce = 150, -- milliseconds to wait before re-rendering after changes
+    timeout = 2000, -- per-render subprocess timeout in milliseconds
+    cache = true, -- reuse renderer output for unchanged source/options
     hide_source = false,
-    max_block_lines = 200,
+    max_block_lines = 200, -- fences longer than this many lines are not rendered
     max_preview_lines = '75%', -- percentage of window height; number of rows, or false for unlimited
     center = true, -- horizontally center diagrams that fit in the available text area
     focus_key = '<CR>', -- Enter on a Mermaid block opens navigation; false disables the shortcut
@@ -196,6 +199,12 @@ flowchart TD
         border_padding = 1,
         padding_x = 5,
         padding_y = 5,
+    },
+    ui = {
+        pending = '󱎫 Mermaid rendering...',
+        error = '󱂅 Mermaid render failed',
+        report = '󰛈 Structured text report (not a diagram)',
+        fallback = '󰛈 Diagram too wide; structured text fallback',
     },
 }
 ```
@@ -220,6 +229,29 @@ notice line (highlighted with `RenderMarkdownMermaidNotice`, text configurable v
 they are distinguishable from diagrams. Set `width = false` to opt out of width fitting while using `merman-cli`.
 
 `hide_source = true` will conceal the raw mermaid fence whenever your cursor is outside that fence, leaving the rendered diagram visible.
+
+`max_block_lines` (default 200) skips rendering for fences longer than that many lines, so very large sources never invoke the renderer.
+
+`cache = true` keeps renderer output keyed by the Mermaid source, command, mode, CLI padding, and width, so revisits and engine switches reuse earlier results instead of invoking the CLI again. `debounce` (milliseconds) delays re-renders while you edit, and `timeout` (milliseconds) bounds each renderer subprocess.
+
+The `ui` table customizes the inline status strings shown while a diagram renders (`pending`), when a render fails (`error`), and for Merman structured-text output (`report`, `fallback`).
+
+## Highlight groups
+
+Inline status lines and the navigation header use these highlight groups, each linked by default to a built-in diagnostic group:
+
+| Group | Default | Used for |
+| --- | --- | --- |
+| `RenderMarkdownMermaidPending` | `DiagnosticInfo` | Inline "rendering..." message while a diagram renders |
+| `RenderMarkdownMermaidError` | `DiagnosticWarn` | Inline message when a render fails |
+| `RenderMarkdownMermaidNotice` | `DiagnosticHint` | Structured-text report / width-fallback notices |
+| `RenderMarkdownMermaidScroll` | `DiagnosticInfo` | Viewport header: visible rows, total, active renderer, focus state |
+
+Override them after `setup()` for different colors:
+
+```lua
+vim.api.nvim_set_hl(0, 'RenderMarkdownMermaidScroll', { link = 'Comment' })
+```
 
 ## Scrolling tall diagrams
 
@@ -273,7 +305,8 @@ opts = { focus_key = '<Tab>' } -- default: '<CR>' (Enter)
 
 `:MermaidFocus` remains available as an optional command.
 
-Try `samples/tall.md` for a scrolling smoke test.
+Try `samples/tall.md` for a scrolling smoke test, `samples/sequence_diagrams.md` for cycling across multiple fences, and
+`samples/alignment.md` for centered left-to-right graphs.
 
 ## Switching rendering engines
 
@@ -317,6 +350,7 @@ This checks for:
 - `mermaid-ascii`
 - `merman-cli` (opt-in renderer)
 - which renderer will be selected by default
+- your configured or session-cycled renderer and width setting, when applicable
 - treesitter parsers for `markdown` and `markdown_inline`
 - a modern enough Neovim / treesitter runtime
 

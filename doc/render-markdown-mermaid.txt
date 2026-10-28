@@ -34,7 +34,8 @@ Use:
 
 This verifies that `render-markdown.nvim`, `selkie`, `bm`, `termaid`,
 `mermaid-ascii`, and `merman-cli` are available, then reports which renderer
-will be selected by default.
+will be selected by default. It also reports a configured or session-cycled
+renderer override and the active width setting, when applicable.
 It also checks for the `markdown` and `markdown_inline` treesitter parsers.
 
 Note that |render-markdown.nvim| may still warn about optional LaTeX support if
@@ -111,6 +112,36 @@ insert mode reveals the source again and falls back to `placement`.
 If `hide_source = true`, the raw mermaid fence is concealed whenever the cursor
 is outside the fence, while the rendered diagram stays visible.
 
+`max_block_lines` (default 200) skips rendering for fences longer than that
+many lines, so very large sources never invoke the renderer.
+
+`cache` (default true) keeps renderer output keyed by the Mermaid source,
+command, mode, CLI padding, and width, so revisits and engine switches reuse
+earlier results instead of invoking the CLI again. `debounce` (milliseconds)
+delays re-renders while editing; `timeout` (milliseconds) bounds each
+renderer subprocess.
+
+The `ui` table customizes the inline status strings shown while a diagram
+renders (`pending`), when a render fails (`error`), and for Merman
+structured-text output (`report`, `fallback`). See the highlight groups
+below for their colors.
+
+HIGHLIGHT GROUPS                          *render-markdown-mermaid-highlights*
+
+Inline status lines and the navigation header use these highlight groups,
+each linked by default to a built-in diagnostic group. Override them after
+setup() with `vim.api.nvim_set_hl()` for different colors.
+
+    RenderMarkdownMermaidPending   *RenderMarkdownMermaidPending*
+        DiagnosticInfo; inline "rendering..." status while a diagram renders.
+    RenderMarkdownMermaidError     *RenderMarkdownMermaidError*
+        DiagnosticWarn; inline render-failure message.
+    RenderMarkdownMermaidNotice    *RenderMarkdownMermaidNotice*
+        DiagnosticHint; structured-text report / width-fallback notices.
+    RenderMarkdownMermaidScroll    *RenderMarkdownMermaidScroll*
+        DiagnosticInfo; viewport header with row range, active renderer,
+        and focus state.
+
 SCROLLING TALL DIAGRAMS                                    *:MermaidFocus*
 
 `max_preview_lines` bounds the inline diagram's height. The default, `'75%'`,
@@ -167,6 +198,9 @@ false to disable the shortcut and restore the original mapping. For example:
 >lua
     opts = { focus_key = '<Tab>' }
 <
+
+Try `samples/tall.md` (scrolling), `samples/sequence_diagrams.md` (engine
+cycling), and `samples/alignment.md` (centered left-to-right graphs).
 
 SWITCHING RENDERERS                                         *:MermaidCycle*
 
